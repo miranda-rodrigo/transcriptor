@@ -6,6 +6,7 @@ import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioRecording } from "./hooks/useAudioRecording";
+import { isBuiltInMicrophone } from "./utils/audioDeviceUtils";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -109,6 +110,53 @@ export default function App() {
       unsubscribeFailed?.();
     };
   }, [toast]);
+
+  useEffect(() => {
+    const syncTrayMicSettings = () => {
+      const preferBuiltInMic = localStorage.getItem("preferBuiltInMic") !== "false";
+      const selectedMicDeviceId = localStorage.getItem("selectedMicDeviceId") || "";
+      window.electronAPI?.trayUpdateMicSettings?.({
+        preferBuiltInMic,
+        selectedMicDeviceId,
+      });
+    };
+
+    const syncTrayAudioDevices = async () => {
+      try {
+        if (!navigator.mediaDevices?.enumerateDevices) return;
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = allDevices
+          .filter((d) => d.kind === "audioinput")
+          .map((d, index) => ({
+            deviceId: d.deviceId,
+            label: d.label || `Microphone ${index + 1}`,
+            isBuiltIn: isBuiltInMicrophone(d.label || ""),
+          }));
+        window.electronAPI?.trayUpdateAudioDevices?.(audioInputs);
+      } catch {}
+    };
+
+    const handleDeviceChange = () => {
+      void syncTrayAudioDevices();
+    };
+
+    const handleLocalStorageUpdate = () => {
+      syncTrayMicSettings();
+    };
+
+    syncTrayMicSettings();
+    void syncTrayAudioDevices();
+
+    navigator.mediaDevices?.addEventListener?.("devicechange", handleDeviceChange);
+    window.addEventListener("storage", handleLocalStorageUpdate);
+    window.addEventListener("openwhispr-localstorage-updated", handleLocalStorageUpdate);
+
+    return () => {
+      navigator.mediaDevices?.removeEventListener?.("devicechange", handleDeviceChange);
+      window.removeEventListener("storage", handleLocalStorageUpdate);
+      window.removeEventListener("openwhispr-localstorage-updated", handleLocalStorageUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     if (isCommandMenuOpen) {

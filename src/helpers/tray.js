@@ -9,6 +9,11 @@ class TrayManager {
     this.controlPanelWindow = null;
     this.windowManager = null;
     this.attachedControlPanels = new WeakSet();
+    this.audioDevices = [];
+    this.micSettings = {
+      preferBuiltInMic: true,
+      selectedMicDeviceId: "",
+    };
   }
 
   setWindows(mainWindow, controlPanelWindow) {
@@ -222,6 +227,102 @@ class TrayManager {
     }
   }
 
+  setAudioDevices(devices = []) {
+    this.audioDevices = Array.isArray(devices) ? devices : [];
+    this.updateTrayMenu();
+  }
+
+  setMicSettings(settings = {}) {
+    this.micSettings = {
+      preferBuiltInMic: settings.preferBuiltInMic !== false,
+      selectedMicDeviceId: settings.selectedMicDeviceId || "",
+    };
+    this.updateTrayMenu();
+  }
+
+  async applyMicSettings(settings = {}) {
+    this.setMicSettings(settings);
+
+    const payload = {
+      preferBuiltInMic: settings.preferBuiltInMic !== false,
+      selectedMicDeviceId: settings.selectedMicDeviceId || "",
+    };
+
+    const script = `
+      try {
+        localStorage.setItem("preferBuiltInMic", ${JSON.stringify(String(payload.preferBuiltInMic))});
+        localStorage.setItem("selectedMicDeviceId", ${JSON.stringify(payload.selectedMicDeviceId)});
+        window.dispatchEvent(new CustomEvent("openwhispr-localstorage-updated", {
+          detail: { key: "preferBuiltInMic", value: ${JSON.stringify(String(payload.preferBuiltInMic))} }
+        }));
+        window.dispatchEvent(new CustomEvent("openwhispr-localstorage-updated", {
+          detail: { key: "selectedMicDeviceId", value: ${JSON.stringify(payload.selectedMicDeviceId)} }
+        }));
+      } catch {}
+    `;
+
+    const windows = [this.mainWindow, this.controlPanelWindow].filter(
+      (win) => win && !win.isDestroyed()
+    );
+
+    await Promise.all(
+      windows.map((win) => win.webContents.executeJavaScript(script).catch(() => {}))
+    );
+
+    this.updateTrayMenu();
+  }
+
+  buildMicrophoneMenuTemplate() {
+    const preferBuiltInMic = this.micSettings.preferBuiltInMic !== false;
+    const selectedMicDeviceId = this.micSettings.selectedMicDeviceId || "";
+
+    const deviceItems = this.audioDevices.map((device, index) => ({
+      type: "radio",
+      label: device.label || `Microphone ${index + 1}`,
+      checked: !preferBuiltInMic && selectedMicDeviceId === device.deviceId,
+      click: () => {
+        void this.applyMicSettings({
+          preferBuiltInMic: false,
+          selectedMicDeviceId: device.deviceId,
+        });
+      },
+    }));
+
+    if (deviceItems.length === 0) {
+      deviceItems.push({
+        label: "No microphones detected yet",
+        enabled: false,
+      });
+    }
+
+    return [
+      {
+        type: "checkbox",
+        label: "Prefer Built-in Microphone",
+        checked: preferBuiltInMic,
+        click: (menuItem) => {
+          void this.applyMicSettings({
+            preferBuiltInMic: menuItem.checked,
+            selectedMicDeviceId: menuItem.checked ? "" : selectedMicDeviceId,
+          });
+        },
+      },
+      {
+        type: "radio",
+        label: "System Default",
+        checked: !preferBuiltInMic && !selectedMicDeviceId,
+        click: () => {
+          void this.applyMicSettings({
+            preferBuiltInMic: false,
+            selectedMicDeviceId: "",
+          });
+        },
+      },
+      { type: "separator" },
+      ...deviceItems,
+    ];
+  }
+
   buildContextMenuTemplate() {
     const dictationVisible = this.windowManager?.isDictationPanelVisible?.() ?? false;
 
@@ -243,6 +344,10 @@ class TrayManager {
         click: async () => {
           await this.showControlPanelFromTray();
         },
+      },
+      {
+        label: "Select Microphone",
+        submenu: this.buildMicrophoneMenuTemplate(),
       },
       { type: "separator" },
       {

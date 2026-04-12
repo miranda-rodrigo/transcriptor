@@ -119,6 +119,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   stopWindowDrag: () => ipcRenderer.invoke("stop-window-drag"),
   setMainWindowInteractivity: (interactive) =>
     ipcRenderer.invoke("set-main-window-interactivity", interactive),
+  trayUpdateAudioDevices: (devices) => ipcRenderer.invoke("tray-update-audio-devices", devices),
+  trayUpdateMicSettings: (settings) => ipcRenderer.invoke("tray-update-mic-settings", settings),
 
   // Update functions
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),

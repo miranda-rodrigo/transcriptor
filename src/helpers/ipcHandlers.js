@@ -10,6 +10,7 @@ class IPCHandlers {
     this.whisperManager = managers.whisperManager;
     this.windowManager = managers.windowManager;
     this.modelManager = managers.modelManager;
+    this.trayManager = managers.trayManager;
     this.setupHandlers();
   }
 
@@ -63,6 +64,16 @@ class IPCHandlers {
 
     ipcMain.handle("set-main-window-interactivity", (event, shouldCapture) => {
       this.windowManager.setMainWindowInteractivity(Boolean(shouldCapture));
+      return { success: true };
+    });
+
+    ipcMain.handle("tray-update-audio-devices", (event, devices) => {
+      this.trayManager?.setAudioDevices?.(devices);
+      return { success: true };
+    });
+
+    ipcMain.handle("tray-update-mic-settings", (event, settings) => {
+      this.trayManager?.setMicSettings?.(settings);
       return { success: true };
     });
 

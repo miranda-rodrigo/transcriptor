@@ -270,6 +270,13 @@ declare global {
       startWindowDrag: () => Promise<void>;
       stopWindowDrag: () => Promise<void>;
       setMainWindowInteractivity: (interactive: boolean) => Promise<void>;
+      trayUpdateAudioDevices: (
+        devices: Array<{ deviceId: string; label: string; isBuiltIn?: boolean }>
+      ) => Promise<{ success: boolean }>;
+      trayUpdateMicSettings: (settings: {
+        preferBuiltInMic: boolean;
+        selectedMicDeviceId: string;
+      }) => Promise<{ success: boolean }>;
 
       // App management
       appQuit: () => Promise<void>;
