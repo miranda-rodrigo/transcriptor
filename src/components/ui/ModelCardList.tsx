@@ -26,17 +26,17 @@ const COLOR_CONFIG: Record<
 > = {
   indigo: {
     selected: "border-accent bg-accent/10",
-    default: "border-border bg-card hover:border-muted-foreground/30",
+    default: "border-border bg-card hover:border-muted-foreground/30 hover:bg-secondary/30",
     badge: "text-xs text-accent bg-accent/10 px-2 py-1 rounded-full font-medium",
   },
   purple: {
-    selected: "border-purple-500 bg-purple-50",
-    default: "border-border bg-card hover:border-muted-foreground/30",
-    badge: "text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full font-medium",
+    selected: "border-accent bg-accent/10",
+    default: "border-border bg-card hover:border-muted-foreground/30 hover:bg-secondary/30",
+    badge: "text-xs text-accent bg-accent/10 px-2 py-1 rounded-full font-medium",
   },
   blue: {
-    selected: "border-blue-500 bg-accent/10",
-    default: "border-border bg-card hover:border-muted-foreground/30",
+    selected: "border-accent bg-accent/10",
+    default: "border-border bg-card hover:border-muted-foreground/30 hover:bg-secondary/30",
     badge: "text-xs text-accent bg-accent/10 px-2 py-1 rounded-full font-medium",
   },
 };

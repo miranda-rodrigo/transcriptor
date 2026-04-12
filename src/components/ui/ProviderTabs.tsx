@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { ProviderIcon } from "./ProviderIcon";
 import type { ColorScheme as BaseColorScheme } from "../../utils/modelPickerStyles";
+import { cn } from "../lib/utils";
 
 export interface ProviderTabItem {
   id: string;
@@ -21,17 +22,15 @@ interface ProviderTabsProps {
 
 const COLOR_CONFIG: Record<
   Exclude<ColorScheme, "dynamic">,
-  { text: string; border: string; bg: string }
+  { selected: string; idle: string }
 > = {
   indigo: {
-    text: "text-accent",
-    border: "rgb(99 102 241)",
-    bg: "rgb(238 242 255)",
+    selected: "border-accent bg-background text-foreground",
+    idle: "text-muted-foreground hover:bg-secondary/80 hover:text-foreground",
   },
   purple: {
-    text: "text-purple-700",
-    border: "rgb(147 51 234)",
-    bg: "rgb(250 245 255)",
+    selected: "border-accent bg-background text-foreground",
+    idle: "text-muted-foreground hover:bg-secondary/80 hover:text-foreground",
   },
 };
 
@@ -44,29 +43,32 @@ export function ProviderTabs({
   scrollable = false,
 }: ProviderTabsProps) {
   const colors = colorScheme !== "dynamic" ? COLOR_CONFIG[colorScheme] : null;
+  const fallbackColors = {
+    selected: "border-accent bg-background text-foreground",
+    idle: "text-muted-foreground hover:bg-secondary/80 hover:text-foreground",
+  };
 
   return (
     <div
-      className={`flex bg-secondary border-b border-border ${scrollable ? "overflow-x-auto" : ""}`}
+      className={cn(
+        "flex border-b border-border bg-secondary/60",
+        scrollable && "overflow-x-auto"
+      )}
     >
       {providers.map((provider) => {
         const isSelected = selectedId === provider.id;
-
-        // Get styles based on color scheme
-        const selectedStyles = colors
-          ? { borderBottomColor: colors.border, backgroundColor: colors.bg }
-          : { borderBottomColor: "rgb(99 102 241)", backgroundColor: "rgb(238 242 255)" };
-
-        const textClass = isSelected ? colors?.text || "text-accent" : "text-muted-foreground";
+        const palette = colors ?? fallbackColors;
 
         return (
           <button
             key={provider.id}
             onClick={() => onSelect(provider.id)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all ${
-              scrollable ? "whitespace-nowrap" : ""
-            } ${textClass} ${isSelected ? "border-b-2" : "hover:bg-secondary"}`}
-            style={isSelected ? selectedStyles : undefined}
+            className={cn(
+              "flex-1 border-b-2 border-transparent px-4 py-3 font-medium transition-all",
+              "flex items-center justify-center gap-2",
+              scrollable && "whitespace-nowrap",
+              isSelected ? palette.selected : palette.idle
+            )}
           >
             {renderIcon ? renderIcon(provider.id) : <ProviderIcon provider={provider.id} />}
             <span>{provider.name}</span>

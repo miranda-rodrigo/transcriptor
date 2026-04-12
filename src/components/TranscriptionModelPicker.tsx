@@ -17,6 +17,7 @@ import {
 } from "../models/ModelRegistry";
 import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
 import { getProviderIcon } from "../utils/providerIcons";
+import { cn } from "./lib/utils";
 
 interface LocalModel {
   model: string;
@@ -316,6 +317,22 @@ export default function TranscriptionModelPicker({
     );
   }, [downloadingModel, downloadProgress, internalLocalProvider, useLocalWhisper, styles]);
 
+  const getModeCardClassName = (isSelected: boolean) =>
+    cn(
+      "cursor-pointer rounded-xl border-2 p-4 text-left transition-all",
+      isSelected
+        ? "border-accent bg-accent/10 shadow-sm"
+        : "border-border bg-card hover:border-muted-foreground/30 hover:bg-secondary/30"
+    );
+
+  const getLocalTabClassName = (isSelected: boolean) =>
+    cn(
+      "flex flex-1 items-center justify-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 py-3 font-medium transition-all",
+      isSelected
+        ? "border-accent bg-background text-foreground"
+        : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+    );
+
   const renderModels = (models: LocalModel[], provider: "whisper" | "nvidia") => (
     <div className="space-y-2">
       {models.map((model) => {
@@ -390,7 +407,7 @@ export default function TranscriptionModelPicker({
                     disabled={isCancelling}
                     size="sm"
                     variant="outline"
-                    className="text-red-600 border-red-300 hover:bg-red-50"
+                    className="border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive"
                   >
                     <X size={14} />
                     <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>
@@ -417,32 +434,16 @@ export default function TranscriptionModelPicker({
     provider: (typeof LOCAL_PROVIDER_TABS)[0],
     isSelected: boolean
   ) => {
-    const tabColorScheme = colorScheme === "purple" ? "purple" : "indigo";
-    const colors = {
-      purple: { text: "text-purple-700", border: "rgb(147 51 234)", bg: "rgb(250 245 255)" },
-      indigo: { text: "text-accent", border: "rgb(99 102 241)", bg: "rgb(238 242 255)" },
-    };
-    const tabColors = colors[tabColorScheme];
-
     return (
       <button
         key={provider.id}
         onClick={() => handleLocalProviderChange(provider.id)}
-        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all whitespace-nowrap ${
-          isSelected
-            ? `${tabColors.text} border-b-2`
-            : "text-muted-foreground hover:bg-secondary"
-        }`}
-        style={
-          isSelected
-            ? { borderBottomColor: tabColors.border, backgroundColor: tabColors.bg }
-            : undefined
-        }
+        className={getLocalTabClassName(isSelected)}
       >
         <ProviderIcon provider={provider.id} className="w-5 h-5" />
         <span>{provider.name}</span>
         {provider.badge && (
-          <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
             {provider.badge}
           </span>
         )}
@@ -455,42 +456,34 @@ export default function TranscriptionModelPicker({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <button
           onClick={() => handleModeChange(false)}
-          className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-            !useLocalWhisper
-              ? "border-purple-500 bg-purple-50"
-              : "border-neutral-200 bg-card hover:border-neutral-300"
-          }`}
+          className={getModeCardClassName(!useLocalWhisper)}
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
               <Cloud className="w-6 h-6 text-accent" />
-              <h4 className="font-medium text-neutral-900">Cloud</h4>
+              <h4 className="font-medium text-foreground">Cloud</h4>
             </div>
-            <span className="text-xs text-success bg-success/10 px-2 py-1 rounded-full">Fast</span>
+            <span className="rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground">
+              Fast
+            </span>
           </div>
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-muted-foreground">
             Transcription via API. Fast and accurate, requires internet.
           </p>
         </button>
 
         <button
           onClick={() => handleModeChange(true)}
-          className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-            useLocalWhisper
-              ? "border-purple-500 bg-purple-50"
-              : "border-neutral-200 bg-card hover:border-neutral-300"
-          }`}
+          className={getModeCardClassName(useLocalWhisper)}
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
-              <Lock className="w-6 h-6 text-purple-600" />
-              <h4 className="font-medium text-neutral-900">Local</h4>
+              <Lock className="w-6 h-6 text-accent" />
+              <h4 className="font-medium text-foreground">Local</h4>
             </div>
-            <span className="text-xs text-accent bg-accent/10 px-2 py-1 rounded-full">
-              Private
-            </span>
+            <span className="rounded-full bg-accent/10 px-2 py-1 text-xs text-accent">Private</span>
           </div>
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-muted-foreground">
             Runs on your device. Complete privacy, works offline.
           </p>
         </button>
@@ -559,7 +552,7 @@ export default function TranscriptionModelPicker({
         </div>
       ) : (
         <div className={styles.container}>
-          <div className="flex bg-secondary border-b border-border">
+          <div className="flex border-b border-border bg-secondary/60">
             {LOCAL_PROVIDER_TABS.map((provider) =>
               renderLocalProviderTab(provider, internalLocalProvider === provider.id)
             )}
