@@ -7,7 +7,7 @@ import ModelCardList from "./ui/ModelCardList";
 import LocalModelPicker, { type LocalProvider } from "./LocalModelPicker";
 import { ProviderTabs } from "./ui/ProviderTabs";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
-import { REASONING_PROVIDERS } from "../models/ModelRegistry";
+import { REASONING_PROVIDERS, getAllMlxModels } from "../models/ModelRegistry";
 import { modelRegistry } from "../models/ModelRegistry";
 import { getProviderIcon } from "../utils/providerIcons";
 
@@ -80,7 +80,7 @@ export default function ReasoningModelSelector({
 }: ReasoningModelSelectorProps) {
   const [selectedMode, setSelectedMode] = useState<"cloud" | "local">("cloud");
   const [selectedCloudProvider, setSelectedCloudProvider] = useState("openai");
-  const [selectedLocalProvider, setSelectedLocalProvider] = useState("qwen");
+  const [selectedLocalProvider, setSelectedLocalProvider] = useState("mlx");
   const [customModelOptions, setCustomModelOptions] = useState<CloudModelOption[]>([]);
   const [customModelsLoading, setCustomModelsLoading] = useState(false);
   const [customModelsError, setCustomModelsError] = useState<string | null>(null);
@@ -269,6 +269,26 @@ export default function ReasoningModelSelector({
   }));
 
   const localProviders = useMemo<LocalProvider[]>(() => {
+    let mlxModels: any[];
+    try {
+      mlxModels = getAllMlxModels();
+    } catch (err: any) {
+      mlxModels = [];
+    }
+    if (mlxModels.length > 0) {
+      return [{
+        id: "mlx",
+        name: "MLX (Apple Silicon)",
+        models: mlxModels.map((m) => ({
+          id: m.id,
+          name: m.name,
+          size: m.size,
+          description: m.description,
+          recommended: m.recommended,
+          hfId: m.hfId,
+        })),
+      }];
+    }
     return modelRegistry.getAllProviders().map((provider) => ({
       id: provider.id,
       name: provider.name,
@@ -338,6 +358,8 @@ export default function ReasoningModelSelector({
     } else if (cloudProviderIds.includes(localReasoningProvider)) {
       setSelectedMode("cloud");
       setSelectedCloudProvider(localReasoningProvider);
+    } else if (localProviderIds.length > 0) {
+      setSelectedLocalProvider(localProviderIds[0]);
     }
   }, [localProviders, localReasoningProvider]);
 

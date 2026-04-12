@@ -251,6 +251,10 @@ declare global {
         agentName: string | null,
         config: any
       ) => Promise<{ success: boolean; text?: string; error?: string }>;
+      mlxModelCheck: (hfId: string) => Promise<boolean>;
+      mlxModelDownload: (hfId: string) => Promise<{ success: boolean; error?: string }>;
+      mlxModelCheckAll: (hfIds: string[]) => Promise<Record<string, boolean>>;
+      onMlxDownloadProgress: (callback: (event: any, data: { hfId: string; percentage: number }) => void) => (() => void) | void;
 
       // llama.cpp management
       llamaCppCheck: () => Promise<{ isInstalled: boolean; version?: string }>;

@@ -60,6 +60,9 @@ class MlxServerManager {
     this.startupPromise = null;
     this.healthCheckInterval = null;
     this.pythonPath = null;
+    this._availableCache = null;
+    this._checkingAvailability = false;
+    this._checkAvailabilityAsync();
   }
 
   async ensurePython() {
@@ -71,21 +74,31 @@ class MlxServerManager {
     return this.pythonPath;
   }
 
-  isAvailable() {
-    try {
-      const python = findPython();
-      if (!python) return false;
-      const { execSync } = require("child_process");
-      const pythonDir = path.dirname(python);
-      execSync(`"${python}" -c "import mlx_lm"`, {
-        timeout: 10000,
-        stdio: "pipe",
-        env: { ...process.env, PATH: `${pythonDir}:${process.env.PATH || "/usr/bin:/bin"}` },
-      });
-      return true;
-    } catch {
-      return false;
+  _checkAvailabilityAsync() {
+    if (this._availableCache !== null || this._checkingAvailability) return;
+    this._checkingAvailability = true;
+    const { execFile } = require("child_process");
+    const python = findPython();
+    if (!python) {
+      this._availableCache = false;
+      this._checkingAvailability = false;
+      return;
     }
+    const pythonDir = path.dirname(python);
+    execFile(python, ["-c", "import mlx_lm"], {
+      timeout: 15000,
+      env: { ...process.env, PATH: `${pythonDir}:${process.env.PATH || "/usr/bin:/bin"}` },
+    }, (err) => {
+      this._availableCache = !err;
+      this._checkingAvailability = false;
+      debugLogger.debug("MLX availability check complete", { available: this._availableCache });
+    });
+  }
+
+  isAvailable() {
+    if (this._availableCache !== null) return this._availableCache;
+    if (!this._checkingAvailability) this._checkAvailabilityAsync();
+    return false;
   }
 
   async findAvailablePort() {
@@ -386,6 +399,60 @@ class MlxServerManager {
     this.ready = false;
     this.port = null;
     this.modelId = null;
+  }
+
+  isModelCached(hfId) {
+    const os = require("os");
+    const fs = require("fs");
+    const cacheDir = path.join(os.homedir(), ".cache", "huggingface", "hub");
+    const folderName = `models--${hfId.replace(/\//g, "--")}`;
+    const modelDir = path.join(cacheDir, folderName);
+    try {
+      return fs.existsSync(modelDir);
+    } catch {
+      return false;
+    }
+  }
+
+  async downloadModel(hfId, onProgress) {
+    const python = await this.ensurePython();
+    const pythonDir = path.dirname(python);
+
+    return new Promise((resolve, reject) => {
+      const args = [
+        "-c",
+        `from huggingface_hub import snapshot_download; snapshot_download("${hfId}")`,
+      ];
+
+      const proc = spawn(python, args, {
+        stdio: ["ignore", "pipe", "pipe"],
+        env: {
+          ...process.env,
+          PATH: `${pythonDir}:${process.env.PATH || "/usr/bin:/bin"}`,
+        },
+      });
+
+      let stderr = "";
+
+      proc.stderr.on("data", (data) => {
+        stderr += data.toString();
+        const line = data.toString().trim();
+        if (line && onProgress) {
+          const match = line.match(/(\d+)%/);
+          if (match) onProgress(parseInt(match[1], 10));
+        }
+      });
+
+      proc.on("close", (code) => {
+        if (code === 0) {
+          resolve(true);
+        } else {
+          reject(new Error(`Download failed: ${stderr.slice(-200)}`));
+        }
+      });
+
+      proc.on("error", (err) => reject(err));
+    });
   }
 
   getStatus() {

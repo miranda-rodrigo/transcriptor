@@ -285,30 +285,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     return `${m}m ${s % 60}s`;
   };
 
-  const [mlxStarting, setMlxStarting] = useState(false);
-  const [mlxStopping, setMlxStopping] = useState(false);
-
-  const handleMlxStart = useCallback(async () => {
-    setMlxStarting(true);
-    try {
-      const result = await window.electronAPI.mlxServerStart("mlx-community/Qwen3-4B-4bit");
-      if (!result.success) {
-        console.error("Failed to start MLX server:", result.error);
-      }
-      fetchProcessStatus();
-    } catch (e) { console.error(e); }
-    finally { setMlxStarting(false); }
-  }, [fetchProcessStatus]);
-
-  const handleMlxStop = useCallback(async () => {
-    setMlxStopping(true);
-    try {
-      await window.electronAPI.mlxServerStop();
-      fetchProcessStatus();
-    } catch (e) { console.error(e); }
-    finally { setMlxStopping(false); }
-  }, [fetchProcessStatus]);
-
   const renderProcessStatus = () => {
     if (!processStatus) return null;
     const { whisper, llama, mlx } = processStatus;
@@ -391,40 +367,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               <div className="text-xs text-neutral-600 space-y-1">
                 {mlx.modelId && <p>Model: <span className="font-medium text-neutral-800">{mlx.modelId.split("/").pop()}</span></p>}
                 {mlx.port && <p>Port: <span className="font-mono text-neutral-800">{mlx.port}</span></p>}
-                {mlx.pid && <p>PID: <span className="font-mono text-neutral-800">{mlx.pid}</span></p>}
               </div>
             )}
             {!mlx?.running && mlx?.available && (
-              <p className="text-xs text-neutral-500">MLX server idle. Starts automatically when needed.</p>
+              <p className="text-xs text-neutral-500">Starts automatically when you use an MLX model.</p>
             )}
             {!mlx?.available && (
               <p className="text-xs text-red-400">Python + mlx-lm not found.</p>
             )}
-            <div className="mt-3 flex gap-2">
-              {mlx?.available && !mlx?.running && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleMlxStart}
-                  disabled={mlxStarting}
-                  className="flex-1 text-violet-600 border-violet-200 hover:bg-violet-50"
-                >
-                  {mlxStarting ? "Starting..." : "Start Server"}
-                </Button>
-              )}
-              {mlx?.running && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleMlxStop}
-                  disabled={mlxStopping}
-                  className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
-                >
-                  <XCircle className="w-3.5 h-3.5 mr-1.5" />
-                  {mlxStopping ? "Stopping..." : "Stop Server"}
-                </Button>
-              )}
-            </div>
           </div>
         </div>
       </div>

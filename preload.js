@@ -183,6 +183,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   mlxServerStatus: () => ipcRenderer.invoke("mlx-server-status"),
   processMlxReasoning: (text, modelId, agentName, config) =>
     ipcRenderer.invoke("process-mlx-reasoning", text, modelId, agentName, config),
+  mlxModelCheck: (hfId) => ipcRenderer.invoke("mlx-model-check", hfId),
+  mlxModelDownload: (hfId) => ipcRenderer.invoke("mlx-model-download", hfId),
+  mlxModelCheckAll: (hfIds) => ipcRenderer.invoke("mlx-model-check-all", hfIds),
+  onMlxDownloadProgress: registerListener("mlx-download-progress"),
 
   // llama.cpp
   llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),

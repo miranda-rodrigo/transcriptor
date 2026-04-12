@@ -684,6 +684,29 @@ class IPCHandlers {
       return mlxServer.getStatus();
     });
 
+    ipcMain.handle("mlx-model-check", async (event, hfId) => {
+      return mlxServer.isModelCached(hfId);
+    });
+
+    ipcMain.handle("mlx-model-download", async (event, hfId) => {
+      try {
+        await mlxServer.downloadModel(hfId, (pct) => {
+          event.sender.send("mlx-download-progress", { hfId, percentage: pct });
+        });
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("mlx-model-check-all", async (event, hfIds) => {
+      const result = {};
+      for (const hfId of hfIds) {
+        result[hfId] = mlxServer.isModelCached(hfId);
+      }
+      return result;
+    });
+
     ipcMain.handle("process-mlx-reasoning", async (event, text, modelId, agentName, config) => {
       try {
         const modelRegistryData = require("../models/modelRegistryData.json");

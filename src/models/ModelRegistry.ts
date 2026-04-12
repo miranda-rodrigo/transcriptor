@@ -201,15 +201,6 @@ function buildReasoningProviders(): ReasoningProviders {
     };
   }
 
-  providers.local = {
-    name: "Local AI (llama.cpp)",
-    models: modelRegistry.getAllModels().map((model) => ({
-      value: model.id,
-      label: model.name,
-      description: `${model.description} (${model.size})`,
-    })),
-  };
-
   const mlxProviders = (modelData as ModelRegistryData).mlxProviders || [];
   const mlxModels: ReasoningModel[] = [];
   for (const mlxProvider of mlxProviders) {
@@ -223,7 +214,7 @@ function buildReasoningProviders(): ReasoningProviders {
   }
   if (mlxModels.length > 0) {
     providers.mlx = {
-      name: "Local AI (MLX - Apple Silicon)",
+      name: "Local AI (MLX)",
       models: mlxModels,
     };
   }
