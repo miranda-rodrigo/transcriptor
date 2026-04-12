@@ -35,15 +35,6 @@ const PASTE_DELAYS = {
   linux: 0, // Linux: xdotool sends X11 events directly, no delay needed
 };
 
-// Platform-specific clipboard restoration delays (ms after paste completes)
-// Ensures paste is fully processed before restoring original clipboard content
-const RESTORE_DELAYS = {
-  darwin: 100, // macOS: AppleScript needs time to complete keystroke
-  win32_nircmd: 80, // Windows nircmd: allow time for paste processing
-  win32_pwsh: 80, // Windows PowerShell: allow time for paste processing
-  linux: 200, // Linux: X11 event queue processing takes longer
-};
-
 // Legacy constant for backward compatibility (used by macOS)
 const PASTE_DELAY_MS = PASTE_DELAYS.darwin;
 
@@ -149,14 +140,7 @@ class ClipboardManager {
     let method = "unknown";
 
     try {
-      // Save original clipboard content first
-      const originalClipboard = clipboard.readText();
-      this.safeLog(
-        "💾 Saved original clipboard content:",
-        originalClipboard.substring(0, 50) + "..."
-      );
-
-      // Copy text to clipboard first - this always works
+      // Copy text to clipboard - it will remain there after pasting
       clipboard.writeText(text);
       this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
 
@@ -174,14 +158,14 @@ class ClipboardManager {
         }
 
         this.safeLog("✅ Permissions granted, attempting to paste...");
-        await this.pasteMacOS(originalClipboard);
+        await this.pasteMacOS();
       } else if (platform === "win32") {
         const nircmdPath = this.getNircmdPath();
         method = nircmdPath ? "nircmd" : "powershell";
-        await this.pasteWindows(originalClipboard);
+        await this.pasteWindows();
       } else {
         method = "linux-tools";
-        await this.pasteLinux(originalClipboard);
+        await this.pasteLinux();
       }
 
       // Log successful paste operation timing
@@ -202,7 +186,7 @@ class ClipboardManager {
     }
   }
 
-  async pasteMacOS(originalClipboard) {
+  async pasteMacOS() {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         const pasteProcess = spawn("osascript", [
@@ -228,10 +212,6 @@ class ClipboardManager {
 
           if (code === 0) {
             this.safeLog("✅ Text pasted successfully via Cmd+V simulation");
-            setTimeout(() => {
-              clipboard.writeText(originalClipboard);
-              this.safeLog("🔄 Original clipboard content restored");
-            }, 100);
             resolve();
           } else {
             const errorMsg = `Paste failed (code ${code}). Text is copied to clipboard - please paste manually with Cmd+V.`;
@@ -259,21 +239,20 @@ class ClipboardManager {
     });
   }
 
-  async pasteWindows(originalClipboard) {
+  async pasteWindows() {
     // Try nircmd first if available, fallback to PowerShell
     const nircmdPath = this.getNircmdPath();
 
     if (nircmdPath) {
-      return this.pasteWithNircmd(nircmdPath, originalClipboard);
+      return this.pasteWithNircmd(nircmdPath);
     } else {
-      return this.pasteWithPowerShell(originalClipboard);
+      return this.pasteWithPowerShell();
     }
   }
 
-  async pasteWithNircmd(nircmdPath, originalClipboard) {
+  async pasteWithNircmd(nircmdPath) {
     return new Promise((resolve, reject) => {
       const pasteDelay = PASTE_DELAYS.win32_nircmd;
-      const restoreDelay = RESTORE_DELAYS.win32_nircmd;
 
       setTimeout(() => {
         let hasTimedOut = false;
@@ -298,19 +277,14 @@ class ClipboardManager {
           if (code === 0) {
             this.safeLog(`✅ nircmd paste success`, {
               elapsedMs: elapsed,
-              restoreDelayMs: restoreDelay,
             });
-            setTimeout(() => {
-              clipboard.writeText(originalClipboard);
-              this.safeLog("🔄 Clipboard restored");
-            }, restoreDelay);
             resolve();
           } else {
             this.safeLog(`❌ nircmd failed (code ${code}), falling back to PowerShell`, {
               elapsedMs: elapsed,
               stderr: errorOutput,
             });
-            this.pasteWithPowerShell(originalClipboard).then(resolve).catch(reject);
+            this.pasteWithPowerShell().then(resolve).catch(reject);
           }
         });
 
@@ -322,7 +296,7 @@ class ClipboardManager {
             elapsedMs: elapsed,
             error: error.message,
           });
-          this.pasteWithPowerShell(originalClipboard).then(resolve).catch(reject);
+          this.pasteWithPowerShell().then(resolve).catch(reject);
         });
 
         const timeoutId = setTimeout(() => {
@@ -331,16 +305,15 @@ class ClipboardManager {
           this.safeLog(`⏱️ nircmd timeout, falling back to PowerShell`, { elapsedMs: elapsed });
           killProcess(pasteProcess, "SIGKILL");
           pasteProcess.removeAllListeners();
-          this.pasteWithPowerShell(originalClipboard).then(resolve).catch(reject);
+          this.pasteWithPowerShell().then(resolve).catch(reject);
         }, 2000);
       }, pasteDelay);
     });
   }
 
-  async pasteWithPowerShell(originalClipboard) {
+  async pasteWithPowerShell() {
     return new Promise((resolve, reject) => {
       const pasteDelay = PASTE_DELAYS.win32_pwsh;
-      const restoreDelay = RESTORE_DELAYS.win32_pwsh;
 
       setTimeout(() => {
         let hasTimedOut = false;
@@ -378,12 +351,7 @@ class ClipboardManager {
           if (code === 0) {
             this.safeLog(`✅ PowerShell paste success`, {
               elapsedMs: elapsed,
-              restoreDelayMs: restoreDelay,
             });
-            setTimeout(() => {
-              clipboard.writeText(originalClipboard);
-              this.safeLog("🔄 Clipboard restored");
-            }, restoreDelay);
             resolve();
           } else {
             this.safeLog(`❌ PowerShell paste failed`, {
@@ -430,7 +398,7 @@ class ClipboardManager {
     });
   }
 
-  async pasteLinux(originalClipboard) {
+  async pasteLinux() {
     const { isWayland, xwaylandAvailable, isGnome } = getLinuxSessionInfo();
     const xdotoolExists = this.commandExists("xdotool");
     const wtypeExists = this.commandExists("wtype");
@@ -548,9 +516,6 @@ class ClipboardManager {
           clearTimeout(timeoutId);
 
           if (code === 0) {
-            // Restore original clipboard after successful paste
-            // Delay allows time for X11 to process paste event before clipboard is overwritten
-            setTimeout(() => clipboard.writeText(originalClipboard), 200);
             resolve();
           } else {
             reject(new Error(`${tool.cmd} exited with code ${code}`));

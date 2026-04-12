@@ -120,11 +120,11 @@ async function startApp() {
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
-  // Ensure dock is visible on macOS and stays visible
+  // On macOS, hide from dock (menu bar only app)
+  // To show in dock, change LSUIElement to false in electron-builder.json
   if (process.platform === 'darwin' && app.dock) {
-    app.dock.show();
-    // Prevent dock from hiding when windows use setVisibleOnAllWorkspaces
-    app.setActivationPolicy('regular');
+    app.dock.hide();
+    app.setActivationPolicy('accessory');
   }
 
   // Initialize Whisper manager at startup (don't await to avoid blocking)
