@@ -11,13 +11,14 @@ import { useDialogs } from "../hooks/useDialogs";
 import { useModelDownload } from "../hooks/useModelDownload";
 import {
   getTranscriptionProviders,
+  PARAKEET_MODEL_INFO,
   TranscriptionProviderData,
   WHISPER_MODEL_INFO,
 } from "../models/ModelRegistry";
 import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
 import { getProviderIcon } from "../utils/providerIcons";
 
-interface WhisperModel {
+interface LocalModel {
   model: string;
   size_mb?: number;
   downloaded?: boolean;
@@ -50,8 +51,8 @@ const CLOUD_PROVIDER_TABS = [
 const VALID_CLOUD_PROVIDER_IDS = CLOUD_PROVIDER_TABS.map((p) => p.id);
 
 const LOCAL_PROVIDER_TABS = [
-  { id: "whisper", name: "OpenAI Whisper" },
-  { id: "nvidia", name: "Nvidia", disabled: true, badge: "Coming Soon" },
+  { id: "whisper", name: "OpenAI Whisper", badge: undefined },
+  { id: "nvidia", name: "NVIDIA Parakeet", badge: undefined },
 ];
 
 export default function TranscriptionModelPicker({
@@ -72,14 +73,24 @@ export default function TranscriptionModelPicker({
   className = "",
   variant = "settings",
 }: TranscriptionModelPickerProps) {
-  const [localModels, setLocalModels] = useState<WhisperModel[]>([]);
+  const [localModels, setLocalModels] = useState<LocalModel[]>([]);
+  const [parakeetModels, setParakeetModels] = useState<LocalModel[]>([]);
   const [internalLocalProvider, setInternalLocalProvider] = useState(selectedLocalProvider);
   const hasLoadedRef = useRef(false);
+  const hasLoadedParakeetRef = useRef(false);
   const isLoadingRef = useRef(false);
+  const isLoadingParakeetRef = useRef(false);
   const loadLocalModelsRef = useRef<(() => Promise<void>) | null>(null);
+  const loadParakeetModelsRef = useRef<(() => Promise<void>) | null>(null);
   const ensureValidCloudSelectionRef = useRef<(() => void) | null>(null);
   const selectedLocalModelRef = useRef(selectedLocalModel);
   const onLocalModelSelectRef = useRef(onLocalModelSelect);
+
+  useEffect(() => {
+    if (selectedLocalProvider !== internalLocalProvider) {
+      setInternalLocalProvider(selectedLocalProvider);
+    }
+  }, [selectedLocalProvider, internalLocalProvider]);
 
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
   const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
@@ -93,17 +104,14 @@ export default function TranscriptionModelPicker({
     onLocalModelSelectRef.current = onLocalModelSelect;
   }, [onLocalModelSelect]);
 
-  const validateAndSelectModel = useCallback((loadedModels: WhisperModel[]) => {
+  const validateAndSelectModel = useCallback((loadedModels: LocalModel[]) => {
     const current = selectedLocalModelRef.current;
-    if (!current) return;
 
     const downloaded = loadedModels.filter((m) => m.downloaded);
     const isCurrentDownloaded = loadedModels.find((m) => m.model === current)?.downloaded;
 
-    if (!isCurrentDownloaded && downloaded.length > 0) {
+    if ((!current || !isCurrentDownloaded) && downloaded.length > 0) {
       onLocalModelSelectRef.current(downloaded[0].model);
-    } else if (!isCurrentDownloaded && downloaded.length === 0) {
-      onLocalModelSelectRef.current("");
     }
   }, []);
 
@@ -122,6 +130,24 @@ export default function TranscriptionModelPicker({
       setLocalModels([]);
     } finally {
       isLoadingRef.current = false;
+    }
+  }, [validateAndSelectModel]);
+
+  const loadParakeetModels = useCallback(async () => {
+    if (isLoadingParakeetRef.current) return;
+    isLoadingParakeetRef.current = true;
+
+    try {
+      const result = await window.electronAPI?.listParakeetModels();
+      if (result?.success) {
+        setParakeetModels(result.models);
+        validateAndSelectModel(result.models);
+      }
+    } catch (error) {
+      console.error("[TranscriptionModelPicker] Failed to load Parakeet models:", error);
+      setParakeetModels([]);
+    } finally {
+      isLoadingParakeetRef.current = false;
     }
   }, [validateAndSelectModel]);
 
@@ -154,26 +180,36 @@ export default function TranscriptionModelPicker({
     loadLocalModelsRef.current = loadLocalModels;
   }, [loadLocalModels]);
   useEffect(() => {
+    loadParakeetModelsRef.current = loadParakeetModels;
+  }, [loadParakeetModels]);
+  useEffect(() => {
     ensureValidCloudSelectionRef.current = ensureValidCloudSelection;
   }, [ensureValidCloudSelection]);
 
   useEffect(() => {
     if (useLocalWhisper) {
-      if (!hasLoadedRef.current) {
+      if (internalLocalProvider === "whisper" && !hasLoadedRef.current) {
         hasLoadedRef.current = true;
         loadLocalModelsRef.current?.();
+      } else if (internalLocalProvider === "nvidia" && !hasLoadedParakeetRef.current) {
+        hasLoadedParakeetRef.current = true;
+        loadParakeetModelsRef.current?.();
       }
     } else {
       hasLoadedRef.current = false;
+      hasLoadedParakeetRef.current = false;
       ensureValidCloudSelectionRef.current?.();
     }
-  }, [useLocalWhisper]);
+  }, [useLocalWhisper, internalLocalProvider]);
 
   useEffect(() => {
-    const handleModelsCleared = () => loadLocalModels();
+    const handleModelsCleared = () => {
+      loadLocalModels();
+      loadParakeetModels();
+    };
     window.addEventListener("openwhispr-models-cleared", handleModelsCleared);
     return () => window.removeEventListener("openwhispr-models-cleared", handleModelsCleared);
-  }, [loadLocalModels]);
+  }, [loadLocalModels, loadParakeetModels]);
 
   const {
     downloadingModel,
@@ -184,8 +220,9 @@ export default function TranscriptionModelPicker({
     cancelDownload,
     isCancelling,
   } = useModelDownload({
-    modelType: "whisper",
-    onDownloadComplete: loadLocalModels,
+    modelType: internalLocalProvider === "nvidia" ? "parakeet" : "whisper",
+    onDownloadComplete:
+      internalLocalProvider === "nvidia" ? loadParakeetModels : loadLocalModels,
   });
 
   const handleModeChange = useCallback(
@@ -209,10 +246,14 @@ export default function TranscriptionModelPicker({
 
   const handleLocalProviderChange = useCallback(
     (providerId: string) => {
-      const tab = LOCAL_PROVIDER_TABS.find((t) => t.id === providerId);
-      if (tab?.disabled) return;
       setInternalLocalProvider(providerId);
       onLocalProviderSelect?.(providerId);
+
+      if (providerId === "nvidia") {
+        loadParakeetModelsRef.current?.();
+      } else {
+        loadLocalModelsRef.current?.();
+      }
     },
     [onLocalProviderSelect]
   );
@@ -225,9 +266,16 @@ export default function TranscriptionModelPicker({
           "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
         onConfirm: async () => {
           await deleteModel(modelId, async () => {
-            const result = await window.electronAPI?.listWhisperModels();
+            const result =
+              internalLocalProvider === "nvidia"
+                ? await window.electronAPI?.listParakeetModels()
+                : await window.electronAPI?.listWhisperModels();
             if (result?.success) {
-              setLocalModels(result.models);
+              if (internalLocalProvider === "nvidia") {
+                setParakeetModels(result.models);
+              } else {
+                setLocalModels(result.models);
+              }
               validateAndSelectModel(result.models);
             }
           });
@@ -235,7 +283,7 @@ export default function TranscriptionModelPicker({
         variant: "destructive",
       });
     },
-    [showConfirmDialog, deleteModel, validateAndSelectModel]
+    [showConfirmDialog, deleteModel, validateAndSelectModel, internalLocalProvider]
   );
 
   const currentCloudProvider = useMemo<TranscriptionProviderData | undefined>(
@@ -255,7 +303,10 @@ export default function TranscriptionModelPicker({
 
   const progressDisplay = useMemo(() => {
     if (!downloadingModel || !useLocalWhisper) return null;
-    const modelInfo = WHISPER_MODEL_INFO[downloadingModel];
+    const modelInfo =
+      internalLocalProvider === "nvidia"
+        ? PARAKEET_MODEL_INFO[downloadingModel]
+        : WHISPER_MODEL_INFO[downloadingModel];
     return (
       <DownloadProgressBar
         modelName={modelInfo?.name || downloadingModel}
@@ -263,17 +314,18 @@ export default function TranscriptionModelPicker({
         styles={styles}
       />
     );
-  }, [downloadingModel, downloadProgress, useLocalWhisper, styles]);
+  }, [downloadingModel, downloadProgress, internalLocalProvider, useLocalWhisper, styles]);
 
-  const renderLocalModels = () => (
+  const renderModels = (models: LocalModel[], provider: "whisper" | "nvidia") => (
     <div className="space-y-2">
-      {localModels.map((model) => {
+      {models.map((model) => {
         const modelId = model.model;
-        const info = WHISPER_MODEL_INFO[modelId] || {
-          name: modelId,
-          description: "Model",
-          size: "Unknown",
-        };
+        const info =
+          (provider === "nvidia" ? PARAKEET_MODEL_INFO : WHISPER_MODEL_INFO)[modelId] || {
+            name: modelId,
+            description: "Model",
+            size: "Unknown",
+          };
         const isSelected = modelId === selectedLocalModel;
         const isDownloading = isDownloadingModel(modelId);
         const isDownloaded = model.downloaded;
@@ -288,16 +340,16 @@ export default function TranscriptionModelPicker({
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <ProviderIcon provider="whisper" className="w-4 h-4" />
-                  <span className="font-medium text-gray-900">{info.name}</span>
+                  <ProviderIcon provider={provider} className="w-4 h-4" />
+                  <span className="font-medium text-foreground">{info.name}</span>
                   {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
                   {info.recommended && (
                     <span className={styles.badges.recommended}>Recommended</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-gray-600">{info.description}</span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">{info.description}</span>
+                  <span className="text-xs text-muted-foreground">
                     • {model.size_mb ? `${model.size_mb}MB` : info.size}
                   </span>
                   {isDownloaded && (
@@ -365,27 +417,24 @@ export default function TranscriptionModelPicker({
     provider: (typeof LOCAL_PROVIDER_TABS)[0],
     isSelected: boolean
   ) => {
-    const isDisabled = provider.disabled;
     const tabColorScheme = colorScheme === "purple" ? "purple" : "indigo";
     const colors = {
       purple: { text: "text-purple-700", border: "rgb(147 51 234)", bg: "rgb(250 245 255)" },
-      indigo: { text: "text-indigo-700", border: "rgb(99 102 241)", bg: "rgb(238 242 255)" },
+      indigo: { text: "text-accent", border: "rgb(99 102 241)", bg: "rgb(238 242 255)" },
     };
     const tabColors = colors[tabColorScheme];
 
     return (
       <button
         key={provider.id}
-        onClick={() => !isDisabled && handleLocalProviderChange(provider.id)}
+        onClick={() => handleLocalProviderChange(provider.id)}
         className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all whitespace-nowrap ${
-          isDisabled
-            ? "text-gray-600 cursor-default"
-            : isSelected
-              ? `${tabColors.text} border-b-2`
-              : "text-gray-600 hover:bg-gray-100"
+          isSelected
+            ? `${tabColors.text} border-b-2`
+            : "text-muted-foreground hover:bg-secondary"
         }`}
         style={
-          isSelected && !isDisabled
+          isSelected
             ? { borderBottomColor: tabColors.border, backgroundColor: tabColors.bg }
             : undefined
         }
@@ -393,7 +442,7 @@ export default function TranscriptionModelPicker({
         <ProviderIcon provider={provider.id} className="w-5 h-5" />
         <span>{provider.name}</span>
         {provider.badge && (
-          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+          <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
             {provider.badge}
           </span>
         )}
@@ -409,15 +458,15 @@ export default function TranscriptionModelPicker({
           className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
             !useLocalWhisper
               ? "border-purple-500 bg-purple-50"
-              : "border-neutral-200 bg-white hover:border-neutral-300"
+              : "border-neutral-200 bg-card hover:border-neutral-300"
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
-              <Cloud className="w-6 h-6 text-blue-600" />
+              <Cloud className="w-6 h-6 text-accent" />
               <h4 className="font-medium text-neutral-900">Cloud</h4>
             </div>
-            <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">Fast</span>
+            <span className="text-xs text-success bg-success/10 px-2 py-1 rounded-full">Fast</span>
           </div>
           <p className="text-sm text-neutral-600">
             Transcription via API. Fast and accurate, requires internet.
@@ -429,7 +478,7 @@ export default function TranscriptionModelPicker({
           className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
             useLocalWhisper
               ? "border-purple-500 bg-purple-50"
-              : "border-neutral-200 bg-white hover:border-neutral-300"
+              : "border-neutral-200 bg-card hover:border-neutral-300"
           }`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -437,7 +486,7 @@ export default function TranscriptionModelPicker({
               <Lock className="w-6 h-6 text-purple-600" />
               <h4 className="font-medium text-neutral-900">Local</h4>
             </div>
-            <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+            <span className="text-xs text-accent bg-accent/10 px-2 py-1 rounded-full">
               Private
             </span>
           </div>
@@ -460,7 +509,7 @@ export default function TranscriptionModelPicker({
 
             <div className="p-4">
               <div className="space-y-3">
-                <h4 className="text-sm font-medium text-gray-700">Select Model</h4>
+                <h4 className="text-sm font-medium text-muted-foreground">Select Model</h4>
                 <ModelCardList
                   models={cloudModelOptions}
                   selectedModel={selectedCloudModel}
@@ -469,9 +518,9 @@ export default function TranscriptionModelPicker({
                 />
               </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="mt-4 pt-4 border-t border-border">
                 <div className="space-y-3">
-                  <h4 className="font-medium text-gray-900">API Configuration</h4>
+                  <h4 className="font-medium text-foreground">API Configuration</h4>
                   <ApiKeyInput
                     apiKey={selectedCloudProvider === "groq" ? groqApiKey : openaiApiKey}
                     setApiKey={selectedCloudProvider === "groq" ? setGroqApiKey : setOpenaiApiKey}
@@ -483,7 +532,7 @@ export default function TranscriptionModelPicker({
                             href="https://console.groq.com"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 underline"
+                            className="text-accent underline"
                           >
                             console.groq.com
                           </a>
@@ -495,7 +544,7 @@ export default function TranscriptionModelPicker({
                             href="https://platform.openai.com"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 underline"
+                            className="text-accent underline"
                           >
                             platform.openai.com
                           </a>
@@ -510,7 +559,7 @@ export default function TranscriptionModelPicker({
         </div>
       ) : (
         <div className={styles.container}>
-          <div className="flex bg-gray-50 border-b border-gray-200">
+          <div className="flex bg-secondary border-b border-border">
             {LOCAL_PROVIDER_TABS.map((provider) =>
               renderLocalProviderTab(provider, internalLocalProvider === provider.id)
             )}
@@ -521,10 +570,8 @@ export default function TranscriptionModelPicker({
           <div className="p-4">
             <h5 className={`${styles.header} mb-3`}>Available Models</h5>
 
-            {internalLocalProvider === "whisper" && renderLocalModels()}
-            {internalLocalProvider === "nvidia" && (
-              <p className="text-sm text-gray-500">Nvidia GPU acceleration coming soon.</p>
-            )}
+            {internalLocalProvider === "whisper" && renderModels(localModels, "whisper")}
+            {internalLocalProvider === "nvidia" && renderModels(parakeetModels, "nvidia")}
           </div>
         </div>
       )}

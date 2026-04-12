@@ -24,7 +24,7 @@ const COLOR_CONFIG: Record<
   { text: string; border: string; bg: string }
 > = {
   indigo: {
-    text: "text-indigo-700",
+    text: "text-accent",
     border: "rgb(99 102 241)",
     bg: "rgb(238 242 255)",
   },
@@ -47,7 +47,7 @@ export function ProviderTabs({
 
   return (
     <div
-      className={`flex bg-gray-50 border-b border-gray-200 ${scrollable ? "overflow-x-auto" : ""}`}
+      className={`flex bg-secondary border-b border-border ${scrollable ? "overflow-x-auto" : ""}`}
     >
       {providers.map((provider) => {
         const isSelected = selectedId === provider.id;
@@ -57,7 +57,7 @@ export function ProviderTabs({
           ? { borderBottomColor: colors.border, backgroundColor: colors.bg }
           : { borderBottomColor: "rgb(99 102 241)", backgroundColor: "rgb(238 242 255)" };
 
-        const textClass = isSelected ? colors?.text || "text-indigo-700" : "text-gray-600";
+        const textClass = isSelected ? colors?.text || "text-accent" : "text-muted-foreground";
 
         return (
           <button
@@ -65,7 +65,7 @@ export function ProviderTabs({
             onClick={() => onSelect(provider.id)}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all ${
               scrollable ? "whitespace-nowrap" : ""
-            } ${textClass} ${isSelected ? "border-b-2" : "hover:bg-gray-100"}`}
+            } ${textClass} ${isSelected ? "border-b-2" : "hover:bg-secondary"}`}
             style={isSelected ? selectedStyles : undefined}
           >
             {renderIcon ? renderIcon(provider.id) : <ProviderIcon provider={provider.id} />}

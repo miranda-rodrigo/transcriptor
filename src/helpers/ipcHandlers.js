@@ -8,6 +8,7 @@ class IPCHandlers {
     this.databaseManager = managers.databaseManager;
     this.clipboardManager = managers.clipboardManager;
     this.whisperManager = managers.whisperManager;
+    this.parakeetManager = managers.parakeetManager;
     this.windowManager = managers.windowManager;
     this.modelManager = managers.modelManager;
     this.trayManager = managers.trayManager;
@@ -235,8 +236,77 @@ class IPCHandlers {
       }
     });
 
+    ipcMain.handle("transcribe-local-parakeet", async (event, audioBlob, options = {}) => {
+      debugLogger.log("transcribe-local-parakeet called", {
+        audioBlobType: typeof audioBlob,
+        audioBlobSize: audioBlob?.byteLength || audioBlob?.length || 0,
+        options,
+      });
+
+      try {
+        const result = await this.parakeetManager.transcribeLocalParakeet(audioBlob, options);
+
+        if (!result.success && result.message === "No audio detected") {
+          event.sender.send("no-audio-detected");
+        }
+
+        return result;
+      } catch (error) {
+        debugLogger.error("Local Parakeet transcription error", error);
+        const errorMessage = error.message || "Unknown error";
+
+        if (errorMessage.includes("FFmpeg not found")) {
+          return {
+            success: false,
+            error: "ffmpeg_not_found",
+            message: "FFmpeg is missing. Please reinstall the app or install FFmpeg manually.",
+          };
+        }
+        if (
+          errorMessage.includes("FFmpeg conversion failed") ||
+          errorMessage.includes("FFmpeg process error")
+        ) {
+          return {
+            success: false,
+            error: "ffmpeg_error",
+            message: "Audio conversion failed. The recording may be corrupted.",
+          };
+        }
+        if (errorMessage.includes("sherpa-onnx") && errorMessage.includes("not found")) {
+          return {
+            success: false,
+            error: "parakeet_not_found",
+            message: "Parakeet runtime is missing. Please reinstall the app.",
+          };
+        }
+        if (
+          errorMessage.includes("Audio buffer is empty") ||
+          errorMessage.includes("Audio data too small")
+        ) {
+          return {
+            success: false,
+            error: "no_audio_data",
+            message: "No audio detected",
+          };
+        }
+        if (errorMessage.includes("model") && errorMessage.includes("not downloaded")) {
+          return {
+            success: false,
+            error: "model_not_found",
+            message: errorMessage,
+          };
+        }
+
+        throw error;
+      }
+    });
+
     ipcMain.handle("check-whisper-installation", async (event) => {
       return this.whisperManager.checkWhisperInstallation();
+    });
+
+    ipcMain.handle("check-parakeet-installation", async () => {
+      return this.parakeetManager.checkInstallation();
     });
 
     ipcMain.handle("get-audio-diagnostics", async () => {
@@ -270,24 +340,67 @@ class IPCHandlers {
       }
     });
 
+    ipcMain.handle("download-parakeet-model", async (event, modelName) => {
+      try {
+        const result = await this.parakeetManager.downloadParakeetModel(modelName, (progressData) => {
+          event.sender.send("parakeet-download-progress", progressData);
+        });
+
+        event.sender.send("parakeet-download-progress", {
+          type: "complete",
+          model: modelName,
+          result,
+        });
+
+        return result;
+      } catch (error) {
+        event.sender.send("parakeet-download-progress", {
+          type: "error",
+          model: modelName,
+          error: error.message,
+        });
+        throw error;
+      }
+    });
+
     ipcMain.handle("check-model-status", async (event, modelName) => {
       return this.whisperManager.checkModelStatus(modelName);
+    });
+
+    ipcMain.handle("check-parakeet-model-status", async (event, modelName) => {
+      return this.parakeetManager.checkModelStatus(modelName);
     });
 
     ipcMain.handle("list-whisper-models", async (event) => {
       return this.whisperManager.listWhisperModels();
     });
 
+    ipcMain.handle("list-parakeet-models", async () => {
+      return this.parakeetManager.listParakeetModels();
+    });
+
     ipcMain.handle("delete-whisper-model", async (event, modelName) => {
       return this.whisperManager.deleteWhisperModel(modelName);
+    });
+
+    ipcMain.handle("delete-parakeet-model", async (event, modelName) => {
+      return this.parakeetManager.deleteParakeetModel(modelName);
     });
 
     ipcMain.handle("delete-all-whisper-models", async () => {
       return this.whisperManager.deleteAllWhisperModels();
     });
 
+    ipcMain.handle("delete-all-parakeet-models", async () => {
+      return this.parakeetManager.deleteAllParakeetModels();
+    });
+
     ipcMain.handle("cancel-whisper-download", async (event) => {
       return this.whisperManager.cancelDownload();
+    });
+
+    ipcMain.handle("cancel-parakeet-download", async () => {
+      return this.parakeetManager.cancelDownload();
     });
 
     // Whisper server handlers (for faster repeated transcriptions)
@@ -301,6 +414,18 @@ class IPCHandlers {
 
     ipcMain.handle("whisper-server-status", async () => {
       return this.whisperManager.getServerStatus();
+    });
+
+    ipcMain.handle("parakeet-server-start", async (event, modelName) => {
+      return this.parakeetManager.startServer(modelName);
+    });
+
+    ipcMain.handle("parakeet-server-stop", async () => {
+      return this.parakeetManager.stopServer();
+    });
+
+    ipcMain.handle("parakeet-server-status", async () => {
+      return this.parakeetManager.getServerStatus();
     });
 
     ipcMain.handle("check-ffmpeg-availability", async (event) => {

@@ -46,7 +46,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
   const {
     useLocalWhisper,
+    localTranscriptionProvider,
     whisperModel,
+    parakeetModel,
     allowOpenAIFallback,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
@@ -66,7 +68,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setPreferBuiltInMic,
     setSelectedMicDeviceId,
     setUseLocalWhisper,
+    setLocalTranscriptionProvider,
     setWhisperModel,
+    setParakeetModel,
     setAllowOpenAIFallback,
     setCloudTranscriptionProvider,
     setCloudTranscriptionModel,
@@ -292,57 +296,57 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     return (
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
             <Activity className="w-5 h-5" />
             Process Status
           </h3>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             Live status of background processes running on your system.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Whisper Server */}
-          <div className={`p-4 rounded-lg border ${whisper.running ? "border-emerald-200 bg-emerald-50" : "border-neutral-200 bg-neutral-50"}`}>
+          <div className={`p-4 rounded-xl border transition-all ${whisper.running ? "border-success/50 bg-success/5" : "border-border bg-card"}`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-neutral-800">Whisper Server</span>
-              <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${whisper.running ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-500"}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${whisper.running ? "bg-emerald-500 animate-pulse" : "bg-neutral-400"}`} />
+              <span className="text-sm font-medium text-foreground">Whisper Server</span>
+              <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full border ${whisper.running ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground border-border"}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${whisper.running ? "bg-success animate-pulse" : "bg-muted-foreground"}`} />
                 {whisper.running ? "Running" : "Stopped"}
               </span>
             </div>
             {whisper.running && (
-              <div className="text-xs text-neutral-600 space-y-1">
-                {whisper.modelName && <p>Model: <span className="font-medium text-neutral-800">{whisper.modelName}</span></p>}
-                {whisper.port && <p>Port: <span className="font-mono text-neutral-800">{whisper.port}</span></p>}
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                {whisper.modelName && <p>Model: <span className="text-foreground">{whisper.modelName}</span></p>}
+                {whisper.port && <p>Port: <span className="font-mono text-foreground">{whisper.port}</span></p>}
               </div>
             )}
             {!whisper.running && (
-              <p className="text-xs text-neutral-500">No active transcription server.</p>
+              <p className="text-xs text-muted-foreground">No active transcription server.</p>
             )}
           </div>
 
           {/* Llama Inference */}
-          <div className={`p-4 rounded-lg border ${llama.running ? "border-amber-200 bg-amber-50" : "border-neutral-200 bg-neutral-50"}`}>
+          <div className={`p-4 rounded-xl border transition-all ${llama.running ? "border-warning/50 bg-warning/5" : "border-border bg-card"}`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-neutral-800">Llama (GGUF)</span>
-              <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${llama.running ? "bg-amber-100 text-amber-700" : "bg-neutral-100 text-neutral-500"}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${llama.running ? "bg-amber-500 animate-pulse" : "bg-neutral-400"}`} />
+              <span className="text-sm font-medium text-foreground">Llama (GGUF)</span>
+              <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full border ${llama.running ? "bg-warning/10 text-warning border-warning/20" : "bg-muted text-muted-foreground border-border"}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${llama.running ? "bg-warning animate-pulse" : "bg-muted-foreground"}`} />
                 {llama.running ? "Processing" : "Idle"}
               </span>
             </div>
             {llama.running && (
               <>
-                <div className="text-xs text-neutral-600 space-y-1">
-                  {llama.modelId && <p>Model: <span className="font-medium text-neutral-800">{llama.modelId}</span></p>}
-                  {llama.pid && <p>PID: <span className="font-mono text-neutral-800">{llama.pid}</span></p>}
-                  {llama.runningForMs != null && <p>Uptime: <span className="font-medium text-neutral-800">{formatUptime(llama.runningForMs)}</span></p>}
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  {llama.modelId && <p>Model: <span className="text-foreground">{llama.modelId}</span></p>}
+                  {llama.pid && <p>PID: <span className="font-mono text-foreground">{llama.pid}</span></p>}
+                  {llama.runningForMs != null && <p>Uptime: <span className="text-foreground">{formatUptime(llama.runningForMs)}</span></p>}
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleKillLlama}
                   disabled={isKillingLlama}
-                  className="mt-3 w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                  className="mt-3 w-full text-destructive border-destructive/20 hover:bg-destructive/10"
                 >
                   <XCircle className="w-3.5 h-3.5 mr-1.5" />
                   {isKillingLlama ? "Killing..." : "Kill Process"}
@@ -350,30 +354,30 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </>
             )}
             {!llama.running && (
-              <p className="text-xs text-neutral-500">No active inference process.</p>
+              <p className="text-xs text-muted-foreground">No active inference process.</p>
             )}
           </div>
 
           {/* MLX Server */}
-          <div className={`p-4 rounded-lg border ${mlx?.running ? "border-violet-200 bg-violet-50" : "border-neutral-200 bg-neutral-50"}`}>
+          <div className={`p-4 rounded-xl border transition-all ${mlx?.running ? "border-chart-4/50 bg-chart-4/5" : "border-border bg-card"}`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-neutral-800">MLX Server</span>
-              <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${mlx?.running ? "bg-violet-100 text-violet-700" : mlx?.available ? "bg-neutral-100 text-neutral-500" : "bg-red-50 text-red-400"}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${mlx?.running ? "bg-violet-500 animate-pulse" : mlx?.available ? "bg-neutral-400" : "bg-red-300"}`} />
+              <span className="text-sm font-medium text-foreground">MLX Server</span>
+              <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full border ${mlx?.running ? "bg-chart-4/10 text-chart-4 border-chart-4/20" : mlx?.available ? "bg-muted text-muted-foreground border-border" : "bg-destructive/10 text-destructive border-destructive/20"}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${mlx?.running ? "bg-chart-4 animate-pulse" : mlx?.available ? "bg-muted-foreground" : "bg-destructive"}`} />
                 {mlx?.running ? "Running" : mlx?.available ? "Ready" : "Unavailable"}
               </span>
             </div>
             {mlx?.running && (
-              <div className="text-xs text-neutral-600 space-y-1">
-                {mlx.modelId && <p>Model: <span className="font-medium text-neutral-800">{mlx.modelId.split("/").pop()}</span></p>}
-                {mlx.port && <p>Port: <span className="font-mono text-neutral-800">{mlx.port}</span></p>}
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                {mlx.modelId && <p>Model: <span className="text-foreground">{mlx.modelId.split("/").pop()}</span></p>}
+                {mlx.port && <p>Port: <span className="font-mono text-foreground">{mlx.port}</span></p>}
               </div>
             )}
             {!mlx?.running && mlx?.available && (
-              <p className="text-xs text-neutral-500">Starts automatically when you use an MLX model.</p>
+              <p className="text-xs text-muted-foreground">Starts automatically when you use an MLX model.</p>
             )}
             {!mlx?.available && (
-              <p className="text-xs text-red-400">Python + mlx-lm not found.</p>
+              <p className="text-xs text-destructive">Python + mlx-lm not found.</p>
             )}
           </div>
         </div>
@@ -389,30 +393,35 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {renderProcessStatus()}
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">App Updates</h3>
-                <p className="text-sm text-gray-600 mb-4">
+                <h3 className="text-lg font-semibold text-foreground mb-2">App Updates</h3>
+                <p className="text-sm text-muted-foreground mb-4">
                   Keep OpenWhispr up to date with the latest features and improvements.
                 </p>
               </div>
-              <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
-                <div>
-                  <p className="text-sm font-medium text-neutral-800">Current Version</p>
-                  <p className="text-xs text-neutral-600">{currentVersion || "Loading..."}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {updateStatus.isDevelopment ? (
-                    <span className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-full">
-                      Development Mode
-                    </span>
-                  ) : updateStatus.updateAvailable ? (
-                    <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                      Update Available
-                    </span>
-                  ) : (
-                    <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded-full">
-                      Up to Date
-                    </span>
-                  )}
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Current Version</p>
+                    <p className="text-lg font-semibold text-foreground">{currentVersion || "Loading..."}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {updateStatus.isDevelopment ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/10 text-warning px-3 py-1 text-xs font-medium">
+                        <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+                        Development Mode
+                      </span>
+                    ) : updateStatus.updateAvailable ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 text-success px-3 py-1 text-xs font-medium">
+                        <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+                        Update Available
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-muted text-muted-foreground px-3 py-1 text-xs font-medium">
+                        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+                        Up to Date
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="space-y-3">
@@ -468,7 +477,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         }
                       }}
                       disabled={downloadingUpdate}
-                      className="w-full bg-green-600 hover:bg-green-700"
+                      className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
                     >
                       {downloadingUpdate ? (
                         <>
@@ -485,15 +494,15 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
                     {downloadingUpdate && (
                       <div className="space-y-1">
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200">
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
                           <div
-                            className="h-full bg-green-600 transition-all duration-200"
+                            className="h-full bg-accent transition-all duration-200"
                             style={{
                               width: `${Math.min(100, Math.max(0, updateDownloadProgress))}%`,
                             }}
                           />
                         </div>
-                        <p className="text-xs text-neutral-600 text-right">
+                        <p className="text-xs text-muted-foreground text-right">
                           {Math.round(updateDownloadProgress)}% downloaded
                         </p>
                       </div>
@@ -526,7 +535,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       });
                     }}
                     disabled={installInitiated}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
                   >
                     {installInitiated ? (
                       <>
@@ -543,16 +552,18 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 )}
 
                 {updateInfo?.version && (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h4 className="font-medium text-blue-900 mb-2">Update v{updateInfo.version}</h4>
-                    {updateInfo.releaseDate && (
-                      <p className="text-sm text-blue-700 mb-2">
-                        Released: {new Date(updateInfo.releaseDate).toLocaleDateString()}
-                      </p>
-                    )}
+                  <div className="rounded-xl border border-border bg-card overflow-hidden">
+                    <div className="border-b border-border px-4 py-3">
+                      <h4 className="font-medium text-foreground">Update v{updateInfo.version}</h4>
+                      {updateInfo.releaseDate && (
+                        <p className="text-xs text-muted-foreground">
+                          Released: {new Date(updateInfo.releaseDate).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
                     {updateInfo.releaseNotes && (
-                      <div className="text-sm text-blue-800">
-                        <p className="font-medium mb-1">What's New:</p>
+                      <div className="p-4 text-sm text-muted-foreground">
+                        <p className="font-medium text-foreground mb-2">What's New:</p>
                         <MarkdownRenderer content={updateInfo.releaseNotes} />
                       </div>
                     )}
@@ -563,8 +574,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             <div className="border-t pt-8">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Dictation Hotkey</h3>
-                <p className="text-sm text-gray-600 mb-6">
+                <h3 className="text-lg font-semibold text-foreground mb-2">Dictation Hotkey</h3>
+                <p className="text-sm text-muted-foreground mb-6">
                   Configure the key or key combination you press to start and stop voice dictation.
                 </p>
               </div>
@@ -577,7 +588,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               />
 
               <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-muted-foreground mb-3">
                   Activation Mode
                 </label>
                 <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
@@ -586,8 +597,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             <div className="border-t pt-8">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Permissions</h3>
-                <p className="text-sm text-gray-600 mb-6">
+                <h3 className="text-lg font-semibold text-foreground mb-2">Permissions</h3>
+                <p className="text-sm text-muted-foreground mb-6">
                   Test and manage app permissions for microphone and accessibility.
                 </p>
               </div>
@@ -628,8 +639,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             <div className="border-t pt-8">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Microphone Input</h3>
-                <p className="text-sm text-gray-600 mb-6">
+                <h3 className="text-lg font-semibold text-foreground mb-2">Microphone Input</h3>
+                <p className="text-sm text-muted-foreground mb-6">
                   Choose which microphone to use for dictation. Enable "Prefer Built-in" to prevent
                   audio interruptions when using Bluetooth headphones.
                 </p>
@@ -644,35 +655,35 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             <div className="border-t pt-8">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">About OpenWhispr</h3>
-                <p className="text-sm text-gray-600 mb-6">
+                <h3 className="text-lg font-semibold text-foreground mb-2">About OpenWhispr</h3>
+                <p className="text-sm text-muted-foreground mb-6">
                   OpenWhispr converts your speech to text using AI. Press your hotkey, speak, and
                   we'll type what you said wherever your cursor is.
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6">
-                <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
-                  <div className="w-8 h-8 mx-auto mb-2 bg-indigo-600 rounded-lg flex items-center justify-center">
-                    <Command className="w-4 h-4 text-white" />
+                <div className="text-center p-4 border border-border rounded-xl bg-card">
+                  <div className="w-8 h-8 mx-auto mb-2 bg-secondary rounded-lg flex items-center justify-center">
+                    <Command className="w-4 h-4 text-foreground" />
                   </div>
-                  <p className="font-medium text-gray-800 mb-1">Default Hotkey</p>
-                  <p className="text-gray-600 font-mono text-xs">
+                  <p className="font-medium text-foreground mb-1">Default Hotkey</p>
+                  <p className="text-muted-foreground font-mono text-xs">
                     {formatHotkeyLabel(dictationKey)}
                   </p>
                 </div>
-                <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
-                  <div className="w-8 h-8 mx-auto mb-2 bg-emerald-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm">🏷️</span>
+                <div className="text-center p-4 border border-border rounded-xl bg-card">
+                  <div className="w-8 h-8 mx-auto mb-2 bg-secondary rounded-lg flex items-center justify-center">
+                    <span className="text-foreground text-sm">🏷️</span>
                   </div>
-                  <p className="font-medium text-gray-800 mb-1">Version</p>
-                  <p className="text-gray-600 text-xs">{currentVersion || "0.1.0"}</p>
+                  <p className="font-medium text-foreground mb-1">Version</p>
+                  <p className="text-muted-foreground text-xs">{currentVersion || "0.1.0"}</p>
                 </div>
-                <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
-                  <div className="w-8 h-8 mx-auto mb-2 bg-green-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm">✓</span>
+                <div className="text-center p-4 border border-border rounded-xl bg-card">
+                  <div className="w-8 h-8 mx-auto mb-2 bg-success/10 rounded-lg flex items-center justify-center">
+                    <span className="text-success text-sm">✓</span>
                   </div>
-                  <p className="font-medium text-gray-800 mb-1">Status</p>
-                  <p className="text-green-600 text-xs font-medium">Active</p>
+                  <p className="font-medium text-foreground mb-1">Status</p>
+                  <p className="text-success text-xs font-medium">Active</p>
                 </div>
               </div>
 
@@ -706,16 +717,16 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     });
                   }}
                   variant="outline"
-                  className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+                  className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
                 >
                   <span className="mr-2">🗑️</span>
                   Clean Up All App Data
                 </Button>
               </div>
 
-              <div className="space-y-3 mt-6 p-4 bg-rose-50 border border-rose-200 rounded-xl">
-                <h4 className="font-medium text-rose-900">Local Model Storage</h4>
-                <p className="text-sm text-rose-800">
+              <div className="space-y-3 mt-6 p-4 bg-destructive/5 border border-destructive/20 rounded-xl">
+                <h4 className="font-medium text-foreground">Local Model Storage</h4>
+                <p className="text-sm text-muted-foreground">
                   Remove all downloaded Whisper models from your cache directory to reclaim disk
                   space. You can re-download any model later.
                 </p>
@@ -737,7 +748,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     {isRemovingModels ? "Removing..." : "Remove All"}
                   </Button>
                 </div>
-                <p className="text-xs text-rose-700">
+                <p className="text-xs text-muted-foreground">
                   Current cache location: <code>{cachePathHint}</code>
                 </p>
               </div>
@@ -749,10 +760,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-foreground mb-2">
                 Speech to Text Processing
               </h3>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 Choose a cloud provider for fast transcription or use local Whisper models for
                 complete privacy.
               </p>
@@ -769,8 +780,21 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               }}
               selectedCloudModel={cloudTranscriptionModel}
               onCloudModelSelect={setCloudTranscriptionModel}
-              selectedLocalModel={whisperModel}
-              onLocalModelSelect={setWhisperModel}
+              selectedLocalModel={
+                localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
+              }
+              onLocalModelSelect={(modelId) => {
+                if (modelId.startsWith("parakeet-")) {
+                  setParakeetModel(modelId);
+                } else {
+                  setWhisperModel(modelId);
+                }
+              }}
+              selectedLocalProvider={localTranscriptionProvider}
+              onLocalProviderSelect={(providerId) => {
+                setLocalTranscriptionProvider(providerId);
+                updateTranscriptionSettings({ localTranscriptionProvider: providerId });
+              }}
               useLocalWhisper={useLocalWhisper}
               onModeChange={(isLocal) => {
                 setUseLocalWhisper(isLocal);
@@ -789,8 +813,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Text Enhancement</h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <h3 className="text-lg font-semibold text-foreground mb-2">AI Text Enhancement</h3>
+              <p className="text-sm text-muted-foreground mb-6">
                 Configure how AI models clean up and format your transcriptions. This handles
                 commands like "scratch that", creates proper lists, and fixes obvious errors while
                 preserving your natural tone.
@@ -826,16 +850,16 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Agent Configuration</h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <h3 className="text-lg font-semibold text-foreground mb-2">Agent Configuration</h3>
+              <p className="text-sm text-muted-foreground mb-6">
                 Customize your AI assistant's name and behavior to make interactions more personal
                 and effective.
               </p>
             </div>
 
-            <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
-              <h4 className="font-medium text-purple-900 mb-3">💡 How to use agent names:</h4>
-              <ul className="text-sm text-purple-800 space-y-2">
+            <div className="space-y-4 p-4 bg-accent/5 border border-accent/20 rounded-xl">
+              <h4 className="font-medium text-foreground mb-3">💡 How to use agent names:</h4>
+              <ul className="text-sm text-muted-foreground space-y-2">
                 <li>• Say "Hey {agentName}, write a formal email" for specific instructions</li>
                 <li>
                   • Use "Hey {agentName}, format this as a list" for text enhancement commands
@@ -851,8 +875,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </ul>
             </div>
 
-            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <h4 className="font-medium text-gray-900">Current Agent Name</h4>
+            <div className="space-y-4 p-4 bg-card border border-border rounded-xl">
+              <h4 className="font-medium text-foreground">Current Agent Name</h4>
               <div className="flex gap-3">
                 <Input
                   placeholder="e.g., Assistant, Jarvis, Alex..."
@@ -873,14 +897,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   Save
                 </Button>
               </div>
-              <p className="text-xs text-gray-600 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 Choose a name that feels natural to say and remember
               </p>
             </div>
 
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">🎯 Example Usage:</h4>
-              <div className="text-sm text-blue-800 space-y-1">
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h4 className="font-medium text-foreground mb-2">🎯 Example Usage:</h4>
+              <div className="text-sm text-muted-foreground space-y-1">
                 <p>• "Hey {agentName}, write an email to my team about the meeting"</p>
                 <p>• "Hey {agentName}, make this more professional" (after dictating text)</p>
                 <p>• "Hey {agentName}, convert this to bullet points"</p>
@@ -894,8 +918,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Prompt Management</h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <h3 className="text-lg font-semibold text-foreground mb-2">AI Prompt Management</h3>
+              <p className="text-sm text-muted-foreground mb-6">
                 View and customize the prompts that power OpenWhispr's AI text processing. Adjust
                 these to change how your transcriptions are formatted and enhanced.
               </p>

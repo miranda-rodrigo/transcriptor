@@ -87,7 +87,14 @@
     {
       "from": "resources/bin/",
       "to": "bin/",
-      "filter": ["whisper-cpp-*", "whisper-server-*"]
+      "filter": [
+        "whisper-cpp-*",
+        "whisper-server-*",
+        "sherpa-onnx-ws-*",
+        "*.dylib",
+        "*.dll",
+        "*.so*"
+      ]
     }
   ],
   "mac": {

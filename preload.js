@@ -81,18 +81,32 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Local Whisper functions (whisper.cpp)
   transcribeLocalWhisper: (audioBlob, options) =>
     ipcRenderer.invoke("transcribe-local-whisper", audioBlob, options),
+  transcribeLocalParakeet: (audioBlob, options) =>
+    ipcRenderer.invoke("transcribe-local-parakeet", audioBlob, options),
   checkWhisperInstallation: () =>
     ipcRenderer.invoke("check-whisper-installation"),
+  checkParakeetInstallation: () =>
+    ipcRenderer.invoke("check-parakeet-installation"),
   downloadWhisperModel: (modelName) =>
     ipcRenderer.invoke("download-whisper-model", modelName),
+  downloadParakeetModel: (modelName) =>
+    ipcRenderer.invoke("download-parakeet-model", modelName),
   onWhisperDownloadProgress: registerListener("whisper-download-progress"),
+  onParakeetDownloadProgress: registerListener("parakeet-download-progress"),
   checkModelStatus: (modelName) =>
     ipcRenderer.invoke("check-model-status", modelName),
+  checkParakeetModelStatus: (modelName) =>
+    ipcRenderer.invoke("check-parakeet-model-status", modelName),
   listWhisperModels: () => ipcRenderer.invoke("list-whisper-models"),
+  listParakeetModels: () => ipcRenderer.invoke("list-parakeet-models"),
   deleteWhisperModel: (modelName) =>
     ipcRenderer.invoke("delete-whisper-model", modelName),
+  deleteParakeetModel: (modelName) =>
+    ipcRenderer.invoke("delete-parakeet-model", modelName),
   deleteAllWhisperModels: () => ipcRenderer.invoke("delete-all-whisper-models"),
+  deleteAllParakeetModels: () => ipcRenderer.invoke("delete-all-parakeet-models"),
   cancelWhisperDownload: () => ipcRenderer.invoke("cancel-whisper-download"),
+  cancelParakeetDownload: () => ipcRenderer.invoke("cancel-parakeet-download"),
   checkFFmpegAvailability: () =>
     ipcRenderer.invoke("check-ffmpeg-availability"),
   getAudioDiagnostics: () => ipcRenderer.invoke("get-audio-diagnostics"),
@@ -102,6 +116,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("whisper-server-start", modelName),
   whisperServerStop: () => ipcRenderer.invoke("whisper-server-stop"),
   whisperServerStatus: () => ipcRenderer.invoke("whisper-server-status"),
+  parakeetServerStart: (modelName) =>
+    ipcRenderer.invoke("parakeet-server-start", modelName),
+  parakeetServerStop: () => ipcRenderer.invoke("parakeet-server-stop"),
+  parakeetServerStatus: () => ipcRenderer.invoke("parakeet-server-status"),
 
   // Window control functions
   windowMinimize: () => ipcRenderer.invoke("window-minimize"),

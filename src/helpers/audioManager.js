@@ -181,11 +181,17 @@ class AudioManager {
 
     try {
       const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
+      const localTranscriptionProvider =
+        localStorage.getItem("localTranscriptionProvider") || "whisper";
       const whisperModel = localStorage.getItem("whisperModel") || "base";
+      const parakeetModel = localStorage.getItem("parakeetModel") || "parakeet-tdt-0.6b-v3";
 
       let result;
       if (useLocalWhisper) {
-        result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
+        result =
+          localTranscriptionProvider === "nvidia"
+            ? await this.processWithLocalParakeet(audioBlob, parakeetModel, metadata)
+            : await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
       } else {
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
       }
@@ -196,7 +202,11 @@ class AudioManager {
 
       const timingData = {
         mode: useLocalWhisper ? "local" : "cloud",
-        model: useLocalWhisper ? whisperModel : this.getTranscriptionModel(),
+        model: useLocalWhisper
+          ? localTranscriptionProvider === "nvidia"
+            ? parakeetModel
+            : whisperModel
+          : this.getTranscriptionModel(),
         audioDurationMs: metadata.durationSeconds
           ? Math.round(metadata.durationSeconds * 1000)
           : null,
@@ -310,6 +320,78 @@ class AudioManager {
       } else {
         throw new Error(`Local Whisper failed: ${error.message}`);
       }
+    }
+  }
+
+  async processWithLocalParakeet(audioBlob, model = "parakeet-tdt-0.6b-v3", metadata = {}) {
+    const timings = {};
+
+    try {
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const language = localStorage.getItem("preferredLanguage");
+      const options = { model };
+      if (language && language !== "auto") {
+        options.language = language;
+      }
+
+      logger.debug(
+        "Parakeet transcription starting",
+        {
+          audioFormat: audioBlob.type,
+          audioSizeBytes: audioBlob.size,
+        },
+        "performance"
+      );
+
+      const transcriptionStart = performance.now();
+      const result = await window.electronAPI.transcribeLocalParakeet(arrayBuffer, options);
+      timings.transcriptionProcessingDurationMs = Math.round(
+        performance.now() - transcriptionStart
+      );
+
+      logger.debug(
+        "Parakeet transcription complete",
+        {
+          transcriptionProcessingDurationMs: timings.transcriptionProcessingDurationMs,
+          success: result.success,
+        },
+        "performance"
+      );
+
+      if (result.success && result.text) {
+        const reasoningStart = performance.now();
+        const text = await this.processTranscription(result.text, "local-parakeet");
+        timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
+
+        if (text !== null && text !== undefined) {
+          return { success: true, text: text || result.text, source: "local-parakeet", timings };
+        }
+        throw new Error("No text transcribed");
+      } else if (result.success === false && result.message === "No audio detected") {
+        throw new Error("No audio detected");
+      } else {
+        throw new Error(result.message || result.error || "Local Parakeet transcription failed");
+      }
+    } catch (error) {
+      if (error.message === "No audio detected") {
+        throw error;
+      }
+
+      const allowOpenAIFallback = localStorage.getItem("allowOpenAIFallback") === "true";
+      const isLocalMode = localStorage.getItem("useLocalWhisper") === "true";
+
+      if (allowOpenAIFallback && isLocalMode) {
+        try {
+          const fallbackResult = await this.processWithOpenAIAPI(audioBlob, metadata);
+          return { ...fallbackResult, source: "openai-fallback" };
+        } catch (fallbackError) {
+          throw new Error(
+            `Local Parakeet failed: ${error.message}. OpenAI fallback also failed: ${fallbackError.message}`
+          );
+        }
+      }
+
+      throw new Error(`Local Parakeet failed: ${error.message}`);
     }
   }
 

@@ -18,14 +18,14 @@ export default function PasteToolsInfo({
       <div className="border rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Terminal className="w-6 h-6 text-indigo-600" />
+            <Terminal className="w-6 h-6 text-accent" />
             <div>
-              <h3 className="font-semibold text-gray-900">Automatic Pasting</h3>
-              <p className="text-sm text-gray-600">Checking system capabilities...</p>
+              <h3 className="font-semibold text-foreground">Automatic Pasting</h3>
+              <p className="text-sm text-muted-foreground">Checking system capabilities...</p>
             </div>
           </div>
           {isChecking && (
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-accent"></div>
           )}
         </div>
       </div>
@@ -35,18 +35,18 @@ export default function PasteToolsInfo({
   // Windows - always ready
   if (pasteToolsInfo.platform === "win32") {
     return (
-      <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+      <div className="border border-green-200 bg-success/10 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Terminal className="w-6 h-6 text-green-600" />
+            <Terminal className="w-6 h-6 text-success" />
             <div>
               <h3 className="font-semibold text-green-900">Automatic Pasting Ready</h3>
-              <p className="text-sm text-green-700">
+              <p className="text-sm text-success">
                 Windows supports automatic pasting out of the box. No setup required!
               </p>
             </div>
           </div>
-          <div className="text-green-600">
+          <div className="text-success">
             <Check className="w-5 h-5" />
           </div>
         </div>
@@ -61,19 +61,19 @@ export default function PasteToolsInfo({
       pasteToolsInfo.isWayland && method === "xdotool" ? " (XWayland apps only)." : ".";
 
     return (
-      <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+      <div className="border border-green-200 bg-success/10 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Terminal className="w-6 h-6 text-green-600" />
+            <Terminal className="w-6 h-6 text-success" />
             <div>
               <h3 className="font-semibold text-green-900">Automatic Pasting Ready</h3>
-              <p className="text-sm text-green-700">
-                Using <code className="bg-green-100 px-1 rounded">{method}</code> for automatic text
+              <p className="text-sm text-success">
+                Using <code className="bg-success/10 px-1 rounded">{method}</code> for automatic text
                 pasting{methodSuffix}
               </p>
             </div>
           </div>
-          <div className="text-green-600">
+          <div className="text-success">
             <Check className="w-5 h-5" />
           </div>
         </div>
@@ -104,23 +104,23 @@ export default function PasteToolsInfo({
                   <code className="bg-amber-100 px-1 rounded font-mono">{recommendedTool}</code>:
                 </p>
 
-                <div className="mt-3 bg-gray-900 text-gray-100 p-3 rounded-md font-mono text-xs overflow-x-auto">
+                <div className="mt-3 bg-secondary text-foreground p-3 rounded-md font-mono text-xs overflow-x-auto">
                   {recommendedTool === "wtype" ? (
                     <>
-                      <div className="text-gray-400"># Fedora / RHEL</div>
+                      <div className="text-muted-foreground"># Fedora / RHEL</div>
                       <div>sudo dnf install wtype</div>
-                      <div className="text-gray-400 mt-2"># Debian / Ubuntu</div>
+                      <div className="text-muted-foreground mt-2"># Debian / Ubuntu</div>
                       <div>sudo apt install wtype</div>
-                      <div className="text-gray-400 mt-2"># Arch Linux</div>
+                      <div className="text-muted-foreground mt-2"># Arch Linux</div>
                       <div>sudo pacman -S wtype</div>
                     </>
                   ) : (
                     <>
-                      <div className="text-gray-400"># Debian / Ubuntu / Mint</div>
+                      <div className="text-muted-foreground"># Debian / Ubuntu / Mint</div>
                       <div>sudo apt install xdotool</div>
-                      <div className="text-gray-400 mt-2"># Fedora / RHEL</div>
+                      <div className="text-muted-foreground mt-2"># Fedora / RHEL</div>
                       <div>sudo dnf install xdotool</div>
-                      <div className="text-gray-400 mt-2"># Arch Linux</div>
+                      <div className="text-muted-foreground mt-2"># Arch Linux</div>
                       <div>sudo pacman -S xdotool</div>
                     </>
                   )}

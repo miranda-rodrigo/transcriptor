@@ -12,13 +12,15 @@ import {
   Sparkles,
   Zap,
   TestTube,
-  AlertTriangle,
 } from "lucide-react";
 import { AlertDialog } from "./dialog";
 import { useDialogs } from "../../hooks/useDialogs";
 import { useAgentName } from "../../utils/agentName";
 import ReasoningService, { DEFAULT_PROMPTS } from "../../services/ReasoningService";
-import { getModelProvider } from "../../models/ModelRegistry";
+import {
+  getModelProvider,
+  REASONING_PROVIDERS,
+} from "../../models/ModelRegistry";
 
 interface PromptStudioProps {
   className?: string;
@@ -29,6 +31,12 @@ type ProviderConfig = {
   apiKeyStorageKey?: string;
   baseStorageKey?: string;
 };
+
+const DEFAULT_TEST_TEXT = `o, uh... okay, so these LLMs, right? They’re like... honestly, they're a huge jump for AI, like, totally changing how we deal with tech and, you know, how we find stuff out.
+
+Basically, these—uh—sophisticated neural networks, they’re just... they're trained on these massive piles of data, like billions of words, I think? And it helps them kind of soak up how humans talk, our logic, and even, like, the creative side of things.
+
+Gulp. But the crazy part is... okay, so at the core, they’re really just guessing. Like, they're just predicting the next word—or "token," whatever—based on math and stats. But even though it sounds like a simple machine thing, it ends up looking like actual thinking. Like it's actually solving problems and... uh... reasoning through stuff. It’s wild.`;
 
 const PROVIDER_CONFIG: Record<string, ProviderConfig> = {
   openai: { label: "OpenAI", apiKeyStorageKey: "openaiApiKey" },
@@ -46,11 +54,13 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
   const [activeTab, setActiveTab] = useState<"current" | "edit" | "test">("current");
   const [editedAgentPrompt, setEditedAgentPrompt] = useState(DEFAULT_PROMPTS.agent);
   const [editedRegularPrompt, setEditedRegularPrompt] = useState(DEFAULT_PROMPTS.regular);
-  const [testText, setTestText] = useState(
-    "Hey Assistant, make this more professional: This is a test message that needs some work."
-  );
+  const [testText, setTestText] = useState(DEFAULT_TEST_TEXT);
   const [testResult, setTestResult] = useState("");
+  const [testExecutionTimeMs, setTestExecutionTimeMs] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(
+    () => localStorage.getItem("reasoningModel") || ""
+  );
 
   const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
   const { agentName } = useAgentName();
@@ -94,94 +104,45 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
   };
 
   const testPrompt = async () => {
-    if (!testText.trim()) return;
+    if (!testText.trim() || !selectedModel) return;
 
     setIsLoading(true);
     setTestResult("");
+    setTestExecutionTimeMs(null);
+
+    const reasoningProvider = getModelProvider(selectedModel);
+    const customPrompts = {
+      agent: editedAgentPrompt,
+      regular: editedRegularPrompt,
+    };
 
     try {
-      // Check if reasoning model is enabled and if we have the necessary settings
-      const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-      const reasoningModel = localStorage.getItem("reasoningModel") || "";
-      // Determine provider from the model name, falling back to openai if needed
-      const reasoningProvider = reasoningModel ? getModelProvider(reasoningModel) : "openai";
+      const startTime = performance.now();
 
-      if (!useReasoningModel) {
-        setTestResult(
-          "⚠️ AI text enhancement is disabled. Enable it in AI Models settings to test prompts."
+      if (reasoningProvider === "local") {
+        const result = await window.electronAPI.processLocalReasoning(
+          testText,
+          selectedModel,
+          agentName,
+          { customPrompts }
         );
-        return;
-      }
 
-      if (!reasoningModel) {
-        setTestResult("⚠️ No reasoning model selected. Choose one in AI Models settings.");
-        return;
-      }
+        setTestExecutionTimeMs(Math.round(performance.now() - startTime));
 
-      const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
-        label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
-      };
-      const providerLabel = providerConfig.label;
-
-      if (providerConfig.baseStorageKey) {
-        const baseUrl = (localStorage.getItem(providerConfig.baseStorageKey) || "").trim();
-        if (!baseUrl) {
-          setTestResult(`⚠️ ${providerLabel} base URL missing. Add it in AI Models settings.`);
-          return;
-        }
-      }
-
-      // Note: API key validation is handled by ReasoningService which uses Electron IPC
-      // to fetch keys from the environment. We skip localStorage validation here.
-
-      // Save current prompts temporarily so the test uses them
-      const currentCustomPrompts = localStorage.getItem("customPrompts");
-      localStorage.setItem(
-        "customPrompts",
-        JSON.stringify({
-          agent: editedAgentPrompt,
-          regular: editedRegularPrompt,
-        })
-      );
-
-      try {
-        // For local models, use a different approach
-        if (reasoningProvider === "local") {
-          // Call local reasoning directly
-          const result = await window.electronAPI.processLocalReasoning(
-            testText,
-            reasoningModel,
-            agentName,
-            {
-              customPrompts: {
-                agent: editedAgentPrompt,
-                regular: editedRegularPrompt,
-              },
-            }
-          );
-
-          if (result.success) {
-            setTestResult(result.text);
-          } else {
-            setTestResult(`❌ Local model error: ${result.error}`);
-          }
+        if (result.success) {
+          setTestResult(result.text);
         } else {
-          // Call the AI - ReasoningService will automatically use the custom prompts
-          const result = await ReasoningService.processText(testText, reasoningModel, agentName, {
-            customPrompts: {
-              agent: editedAgentPrompt,
-              regular: editedRegularPrompt,
-            },
-          });
-          setTestResult(result);
+          setTestResult(`❌ Local model error: ${result.error}`);
         }
-      } finally {
-        // Restore original prompts
-        if (currentCustomPrompts) {
-          localStorage.setItem("customPrompts", currentCustomPrompts);
-        } else {
-          localStorage.removeItem("customPrompts");
-        }
+      } else {
+        const result = await ReasoningService.processText(
+          testText,
+          selectedModel,
+          agentName,
+          { customPrompts }
+        );
+        setTestExecutionTimeMs(Math.round(performance.now() - startTime));
+        setTestResult(result);
       }
     } catch (error) {
       console.error("Test failed:", error);
@@ -203,10 +164,10 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Eye className="w-5 h-5 text-blue-600" />
+          <Eye className="w-5 h-5 text-accent" />
           Current AI Prompts
         </h3>
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-muted-foreground mb-6">
           These are the exact prompts currently being sent to your AI models. Understanding these
           helps you see how OpenWhispr thinks!
         </p>
@@ -215,12 +176,12 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="w-4 h-4 text-purple-600" />
+            <Sparkles className="w-4 h-4 text-accent" />
             Agent Mode Prompt (when you say "Hey {agentName}")
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-gray-50 border rounded-lg p-4 font-mono text-sm">
+          <div className="bg-secondary border border-border rounded-lg p-4 font-mono text-sm">
             <pre className="whitespace-pre-wrap">
               {editedAgentPrompt.replace(/\{\{agentName\}\}/g, agentName)}
             </pre>
@@ -240,12 +201,12 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Zap className="w-4 h-4 text-green-600" />
+            <Zap className="w-4 h-4 text-success" />
             Regular Mode Prompt (for automatic cleanup)
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-gray-50 border rounded-lg p-4 font-mono text-sm">
+          <div className="bg-secondary border border-border rounded-lg p-4 font-mono text-sm">
             <pre className="whitespace-pre-wrap">{editedRegularPrompt}</pre>
           </div>
           <Button
@@ -266,10 +227,10 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Edit3 className="w-5 h-5 text-indigo-600" />
+          <Edit3 className="w-5 h-5 text-accent" />
           Customize Your AI Prompts
         </h3>
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-muted-foreground mb-6">
           Edit these prompts to change how your AI behaves. Use <code>{"{{agentName}}"}</code> and{" "}
           <code>{"{{text}}"}</code> as placeholders.
         </p>
@@ -319,59 +280,51 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
   );
 
   const renderTestPlayground = () => {
-    const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-    const reasoningModel = localStorage.getItem("reasoningModel") || "";
-    const reasoningProvider = reasoningModel ? getModelProvider(reasoningModel) : "openai";
-    const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
-      label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
-    };
-    const providerLabel = providerConfig.label;
-    const providerEndpoint = providerConfig.baseStorageKey
-      ? (localStorage.getItem(providerConfig.baseStorageKey) || "").trim()
-      : "";
+    const provider = selectedModel ? getModelProvider(selectedModel) : "";
+    const providerConfig = provider
+      ? PROVIDER_CONFIG[provider] || {
+          label: provider.charAt(0).toUpperCase() + provider.slice(1),
+        }
+      : null;
+    const canRunTest = !!testText.trim() && !!selectedModel && !isLoading;
 
     return (
       <div className="space-y-6">
         <div>
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <TestTube className="w-5 h-5 text-green-600" />
+            <TestTube className="w-5 h-5 text-accent" />
             Test Your Prompts
           </h3>
-          <p className="text-sm text-gray-600 mb-6">
-            Test your custom prompts with the actual AI model to see real results.
+          <p className="text-sm text-muted-foreground mb-6">
+            Select a model and test your custom prompts to see real results.
           </p>
         </div>
 
-        {!useReasoningModel && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm text-amber-800 font-medium">AI Text Enhancement Disabled</p>
-                <p className="text-sm text-amber-700 mt-1">
-                  Enable AI text enhancement in the AI Models settings to test prompts.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         <Card>
           <CardContent className="p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-600">Current Model:</span>
-                <span className="ml-2 font-medium">{reasoningModel}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Provider:</span>
-                <span className="ml-2 font-medium capitalize">{providerLabel}</span>
-                {providerConfig.baseStorageKey && (
-                  <div className="text-xs text-gray-500 mt-1 break-all">
-                    Endpoint: {providerEndpoint || "Not configured"}
-                  </div>
-                )}
-              </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Model</label>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="">Select a model...</option>
+                {Object.entries(REASONING_PROVIDERS).map(([providerId, providerData]) => (
+                  <optgroup key={providerId} label={providerData.name}>
+                    {providerData.models.map((model) => (
+                      <option key={model.value} value={model.value}>
+                        {model.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              {providerConfig && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Provider: {providerConfig.label}
+                </p>
+              )}
             </div>
 
             <div>
@@ -379,24 +332,24 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
               <Textarea
                 value={testText}
                 onChange={(e) => setTestText(e.target.value)}
-                rows={3}
+                rows={12}
                 placeholder="Enter text to test with your custom prompts..."
               />
               <div className="flex items-center justify-between mt-2">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Try including "{agentName}" in your text to test agent mode prompts
                 </p>
                 {testText && (
                   <span
                     className={`text-xs px-2 py-1 rounded-full ${
                       testText.toLowerCase().includes(agentName.toLowerCase())
-                        ? "bg-purple-100 text-purple-700"
-                        : "bg-green-100 text-green-700"
+                        ? "bg-accent/10 text-accent"
+                        : "bg-success/10 text-success"
                     }`}
                   >
                     {testText.toLowerCase().includes(agentName.toLowerCase())
-                      ? "🤖 Agent Mode"
-                      : "✨ Regular Mode"}
+                      ? "Agent Mode"
+                      : "Regular Mode"}
                   </span>
                 )}
               </div>
@@ -404,7 +357,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
 
             <Button
               onClick={testPrompt}
-              disabled={!testText.trim() || isLoading || !useReasoningModel}
+              disabled={!canRunTest}
               className="w-full"
             >
               <Play className="w-4 h-4 mr-2" />
@@ -414,16 +367,21 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
             {testResult && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium">AI Response</label>
+                  <label className="text-sm font-medium">Test Result</label>
                   <Button onClick={() => copyPrompt(testResult)} variant="ghost" size="sm">
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
+                {testExecutionTimeMs !== null && (
+                  <div className="mb-2 text-sm text-muted-foreground">
+                    Execution time: {(testExecutionTimeMs / 1000).toFixed(2)}s
+                  </div>
+                )}
                 <div
                   className={`border rounded-lg p-4 text-sm max-h-60 overflow-y-auto ${
-                    testResult.startsWith("⚠️") || testResult.startsWith("❌")
-                      ? "bg-amber-50 border-amber-200 text-amber-800"
-                      : "bg-gray-50 border-gray-200"
+                    testResult.startsWith("\u26A0\uFE0F") || testResult.startsWith("\u274C")
+                      ? "bg-warning/10 border-warning/30 text-warning"
+                      : "bg-secondary border-border"
                   }`}
                 >
                   <pre className="whitespace-pre-wrap">{testResult}</pre>
@@ -447,7 +405,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       />
 
       {/* Tab Navigation */}
-      <div className="flex border-b border-gray-200 mb-6">
+      <div className="flex border-b border-border mb-6">
         {[
           { id: "current", label: "Current Prompts", icon: Eye },
           { id: "edit", label: "Customize", icon: Edit3 },
@@ -460,8 +418,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-gray-600 hover:text-gray-900"
+                  ? "border-accent text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               <Icon className="w-4 h-4" />

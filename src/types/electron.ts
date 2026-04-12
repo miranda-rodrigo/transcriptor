@@ -162,15 +162,31 @@ declare global {
 
       // Whisper operations (whisper.cpp)
       transcribeLocalWhisper: (audioBlob: Blob | ArrayBuffer, options?: any) => Promise<any>;
+      transcribeLocalParakeet: (audioBlob: Blob | ArrayBuffer, options?: any) => Promise<any>;
       checkWhisperInstallation: () => Promise<WhisperCheckResult>;
+      checkParakeetInstallation: () => Promise<WhisperCheckResult>;
       downloadWhisperModel: (modelName: string) => Promise<WhisperModelResult>;
+      downloadParakeetModel: (modelName: string) => Promise<WhisperModelResult>;
       onWhisperDownloadProgress: (
         callback: (event: any, data: WhisperDownloadProgressData) => void
       ) => (() => void) | void;
+      onParakeetDownloadProgress: (
+        callback: (event: any, data: WhisperDownloadProgressData) => void
+      ) => (() => void) | void;
       checkModelStatus: (modelName: string) => Promise<WhisperModelResult>;
+      checkParakeetModelStatus: (modelName: string) => Promise<WhisperModelResult>;
       listWhisperModels: () => Promise<WhisperModelsListResult>;
+      listParakeetModels: () => Promise<WhisperModelsListResult>;
       deleteWhisperModel: (modelName: string) => Promise<WhisperModelDeleteResult>;
+      deleteParakeetModel: (modelName: string) => Promise<WhisperModelDeleteResult>;
       deleteAllWhisperModels: () => Promise<{
+        success: boolean;
+        deleted_count?: number;
+        freed_bytes?: number;
+        freed_mb?: number;
+        error?: string;
+      }>;
+      deleteAllParakeetModels: () => Promise<{
         success: boolean;
         deleted_count?: number;
         freed_bytes?: number;
@@ -182,6 +198,17 @@ declare global {
         message?: string;
         error?: string;
       }>;
+      cancelParakeetDownload: () => Promise<{
+        success: boolean;
+        message?: string;
+        error?: string;
+      }>;
+      whisperServerStart?: (modelName: string) => Promise<{ success: boolean; port?: number; error?: string }>;
+      whisperServerStop?: () => Promise<{ success: boolean; error?: string }>;
+      whisperServerStatus?: () => Promise<any>;
+      parakeetServerStart?: (modelName: string) => Promise<{ success: boolean; port?: number; error?: string }>;
+      parakeetServerStop?: () => Promise<{ success: boolean; error?: string }>;
+      parakeetServerStatus?: () => Promise<any>;
 
       // Local AI model management
       modelGetAll: () => Promise<any[]>;

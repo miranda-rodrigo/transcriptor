@@ -30,50 +30,33 @@ export default function TranscriptionItem({
       });
 
   return (
-    <div className="relative bg-gradient-to-b from-blue-50/30 to-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
-      <div className="p-6 pl-16" style={{ paddingTop: "8px" }}>
-        <div className="flex items-start justify-between">
-          <div className="flex-1 mr-3">
-            <div
-              className="flex items-center gap-2 mb-1"
-              style={{ marginTop: "2px", lineHeight: "24px" }}
-            >
-              <span className="text-indigo-600 text-xs font-medium">#{total - index}</span>
-              <div className="w-px h-3 bg-neutral-300" />
-              <span className="text-xs text-neutral-500">{formattedTimestamp}</span>
-            </div>
-            <p
-              className="text-neutral-800 text-sm"
-              style={{
-                fontFamily:
-                  'Noto Sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                lineHeight: "24px",
-                textAlign: "left",
-                marginTop: "2px",
-                paddingBottom: "2px",
-              }}
-            >
-              {item.text}
-            </p>
+    <div className="rounded-xl border border-border bg-card p-4 hover:border-muted-foreground/30 transition-all">
+      <div className="flex items-start justify-between">
+        <div className="flex-1 mr-3">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-accent text-xs font-medium">#{total - index}</span>
+            <div className="w-px h-3 bg-border" />
+            <span className="text-xs text-muted-foreground">{formattedTimestamp}</span>
           </div>
-          <div className="flex gap-1 flex-shrink-0" style={{ marginTop: "2px" }}>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => onCopy(item.text)}
-              className="h-7 w-7"
-            >
-              <Copy size={12} />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => onDelete(item.id)}
-              className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-            >
-              <Trash2 size={12} />
-            </Button>
-          </div>
+          <p className="text-foreground text-sm leading-relaxed">{item.text}</p>
+        </div>
+        <div className="flex gap-1 flex-shrink-0">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => onCopy(item.text)}
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+          >
+            <Copy size={12} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => onDelete(item.id)}
+            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 size={12} />
+          </Button>
         </div>
       </div>
     </div>

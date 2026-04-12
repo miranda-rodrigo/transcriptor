@@ -259,10 +259,10 @@ export function HotkeyInput({
           focus:outline-none
           ${
             disabled
-              ? "bg-gray-50 border-gray-200 cursor-not-allowed opacity-60"
+              ? "bg-secondary border-border cursor-not-allowed opacity-60"
               : isCapturing
                 ? "bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-400 shadow-lg shadow-indigo-100"
-                : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-md"
+                : "bg-card border-border hover:border-muted-foreground/30 hover:shadow-md"
           }
         `}
       >
@@ -275,7 +275,7 @@ export function HotkeyInput({
             <div className="space-y-3">
               <div className="flex items-center justify-center gap-2">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-sm font-medium text-gray-600">Recording</span>
+                <span className="text-sm font-medium text-muted-foreground">Recording</span>
               </div>
 
               {activeModifiers.size > 0 ? (
@@ -283,7 +283,7 @@ export function HotkeyInput({
                   {Array.from(activeModifiers).map((mod) => (
                     <kbd
                       key={mod}
-                      className="px-2.5 py-1.5 bg-indigo-100 border border-indigo-200 rounded-lg text-sm font-semibold text-indigo-700 shadow-sm"
+                      className="px-2.5 py-1.5 bg-accent/10 border border-indigo-200 rounded-lg text-sm font-semibold text-accent shadow-sm"
                     >
                       {mod}
                     </kbd>
@@ -294,10 +294,10 @@ export function HotkeyInput({
                   </span>
                 </div>
               ) : (
-                <p className="text-center text-gray-500">Press any key or combination</p>
+                <p className="text-center text-muted-foreground">Press any key or combination</p>
               )}
 
-              <p className="text-xs text-center text-gray-400">
+              <p className="text-xs text-center text-muted-foreground">
                 {isMac ? "Try ⌘⇧K or ⌥Space" : "Try Ctrl+Shift+K or Alt+Space"}
               </p>
             </div>
@@ -307,8 +307,8 @@ export function HotkeyInput({
                 <div className="flex items-center justify-center gap-1.5">
                   {hotkeyParts.map((part, i) => (
                     <React.Fragment key={part}>
-                      {i > 0 && <span className="text-gray-300 font-medium">+</span>}
-                      <kbd className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-base font-semibold text-gray-800 shadow-sm">
+                      {i > 0 && <span className="text-muted-foreground font-medium">+</span>}
+                      <kbd className="px-3 py-2 bg-secondary border border-border rounded-lg text-base font-semibold text-foreground shadow-sm">
                         {part}
                       </kbd>
                     </React.Fragment>
@@ -316,22 +316,22 @@ export function HotkeyInput({
                 </div>
               ) : isGlobe ? (
                 <div className="flex items-center gap-2">
-                  <kbd className="px-4 py-2 bg-gradient-to-b from-gray-50 to-gray-100 border border-gray-200 rounded-xl text-2xl shadow-sm">
+                  <kbd className="px-4 py-2 bg-gradient-to-b from-gray-50 to-gray-100 border border-border rounded-xl text-2xl shadow-sm">
                     🌐
                   </kbd>
-                  <span className="text-sm font-medium text-gray-600">Globe/Fn</span>
+                  <span className="text-sm font-medium text-muted-foreground">Globe/Fn</span>
                 </div>
               ) : (
-                <kbd className="px-5 py-3 bg-gradient-to-b from-gray-50 to-gray-100 border border-gray-200 rounded-xl text-xl font-bold text-gray-800 shadow-sm min-w-[60px] text-center">
+                <kbd className="px-5 py-3 bg-gradient-to-b from-gray-50 to-gray-100 border border-border rounded-xl text-xl font-bold text-foreground shadow-sm min-w-[60px] text-center">
                   {displayValue}
                 </kbd>
               )}
 
-              <p className="text-xs text-gray-400">Click to change</p>
+              <p className="text-xs text-muted-foreground">Click to change</p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2 py-2">
-              <div className="flex items-center gap-2 text-gray-400">
+              <div className="flex items-center gap-2 text-muted-foreground">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"

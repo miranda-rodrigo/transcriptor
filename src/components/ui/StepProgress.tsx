@@ -24,16 +24,16 @@ export default function StepProgress({ steps, currentStep, className = "" }: Ste
           <div key={index} className="flex">
             <div
               className={`flex items-center gap-2 ${
-                isActive ? "text-blue-600" : isCompleted ? "text-green-600" : "text-stone-400"
+                isActive ? "text-accent" : isCompleted ? "text-success" : "text-stone-400"
               }`}
             >
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center border-2 flex-shrink-0 transition-all duration-200 ${
                   isActive
-                    ? "border-blue-600 bg-blue-50 shadow-sm"
+                    ? "border-blue-600 bg-accent/10 shadow-sm"
                     : isCompleted
-                      ? "border-green-600 bg-green-50 shadow-sm"
-                      : "border-stone-300 bg-white"
+                      ? "border-green-600 bg-success/10 shadow-sm"
+                      : "border-stone-300 bg-card"
                 }`}
               >
                 {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}

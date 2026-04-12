@@ -533,8 +533,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       case 0: // Welcome
         return (
           <div className="text-center space-y-6">
-            <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-blue-600" />
+            <div className="w-16 h-16 mx-auto bg-accent/10 rounded-full flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-accent" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-stone-900 mb-2">Welcome to OpenWhispr</h2>
@@ -542,7 +542,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 Let's set up your voice dictation in just a few simple steps.
               </p>
             </div>
-            <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200/60">
+            <div className="bg-accent/10/50 p-4 rounded-lg border border-blue-200/60">
               <p className="text-sm text-blue-800">
                 🎤 Turn your voice into text instantly
                 <br />
@@ -575,10 +575,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
                 {useLocalWhisper ? "Local Processing Setup" : "Cloud Processing Setup"}
               </h2>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 {useLocalWhisper
                   ? "Let's install and configure Whisper on your device"
                   : "Enter your OpenAI API key to get started"}
@@ -588,20 +588,20 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {useLocalWhisper ? (
               <div className="space-y-4">
                 <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    <Mic className="w-8 h-8 text-blue-600" />
+                  <div className="w-16 h-16 mx-auto bg-accent/10 rounded-full flex items-center justify-center mb-4">
+                    <Mic className="w-8 h-8 text-accent" />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Choose Your Model</h3>
-                  <p className="text-sm text-gray-600">
+                  <h3 className="font-semibold text-foreground mb-2">Choose Your Model</h3>
+                  <p className="text-sm text-muted-foreground">
                     Select a transcription model based on your needs.
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                  <label className="block text-sm font-medium text-muted-foreground mb-3">
                     Model quality
                   </label>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Larger models are more accurate but slower. Base is recommended for most users.
                   </p>
                 </div>
@@ -619,8 +619,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             ) : (
               <div className="space-y-4">
                 <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    <Key className="w-8 h-8 text-blue-600" />
+                  <div className="w-16 h-16 mx-auto bg-accent/10 rounded-full flex items-center justify-center mb-4">
+                    <Key className="w-8 h-8 text-accent" />
                   </div>
                 </div>
 
@@ -635,7 +635,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                         href="https://platform.openai.com"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 underline"
+                        className="text-accent underline"
                       >
                         platform.openai.com
                       </a>
@@ -690,7 +690,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                         </p>
                       )}
                       {isValidReasoningBase && customModelsLoading && (
-                        <p className="text-xs text-blue-600">Fetching models...</p>
+                        <p className="text-xs text-accent">Fetching models...</p>
                       )}
                       {isValidReasoningBase && customModelsError && (
                         <p className="text-xs text-red-600">{customModelsError}</p>
@@ -718,7 +718,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   />
                 </div>
 
-                <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="bg-accent/10 p-4 rounded-lg">
                   <h4 className="font-medium text-blue-900 mb-2">How to get your API key:</h4>
                   <ol className="text-sm text-blue-800 space-y-1">
                     <li>1. Go to platform.openai.com</li>
@@ -732,9 +732,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             )}
 
             {/* Language Selection - shown for both modes */}
-            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <h4 className="font-medium text-gray-900 mb-3">🌍 Preferred Language</h4>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-4 p-4 bg-secondary border border-border rounded-xl">
+              <h4 className="font-medium text-foreground mb-3">🌍 Preferred Language</h4>
+              <label className="block text-sm font-medium text-muted-foreground mb-2">
                 Which language do you primarily speak?
               </label>
               <LanguageSelector
@@ -744,7 +744,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 }}
                 className="w-full"
               />
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {useLocalWhisper
                   ? "Helps Whisper better understand your speech"
                   : "Improves OpenAI transcription speed and accuracy. AI text enhancement is enabled by default."}
@@ -760,8 +760,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Grant Permissions</h2>
-              <p className="text-gray-600">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Grant Permissions</h2>
+              <p className="text-muted-foreground">
                 {isMacOS
                   ? "OpenWhispr needs a couple of permissions to work properly"
                   : "OpenWhispr needs microphone access to record your voice"}
@@ -826,8 +826,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Set Your Hotkey & Test</h2>
-              <p className="text-gray-600">Choose your hotkey and activation style</p>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Set Your Hotkey & Test</h2>
+              <p className="text-muted-foreground">Choose your hotkey and activation style</p>
             </div>
 
             <HotkeyInput
@@ -842,19 +842,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             />
 
             <div className="pt-2">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <label className="block text-sm font-medium text-muted-foreground mb-3">
                 Activation Mode
               </label>
               <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
             </div>
 
-            <div className="bg-blue-50/50 p-5 rounded-lg border border-blue-200/60">
+            <div className="bg-accent/10/50 p-5 rounded-lg border border-blue-200/60">
               <h3 className="font-semibold text-blue-900 mb-3">Try It Now</h3>
               <p className="text-sm text-blue-800 mb-3">
                 {activationMode === "tap" ? (
                   <>
                     Click in the text area, press{" "}
-                    <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
+                    <kbd className="bg-card px-2 py-1 rounded text-xs font-mono border border-blue-200">
                       {readableHotkey}
                     </kbd>{" "}
                     to start recording, speak, then press it again to stop.
@@ -862,7 +862,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 ) : (
                   <>
                     Click in the text area, hold{" "}
-                    <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
+                    <kbd className="bg-card px-2 py-1 rounded text-xs font-mono border border-blue-200">
                       {readableHotkey}
                     </kbd>{" "}
                     while speaking, then release to process.
@@ -902,14 +902,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             </div>
 
             <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Agent Name</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-2">Agent Name</label>
               <Input
                 placeholder="e.g., Assistant, Jarvis, Alex..."
                 value={agentName}
                 onChange={(e) => setAgentName(e.target.value)}
                 className="text-center text-lg font-mono"
               />
-              <p className="text-xs text-gray-500 mt-2">You can change this anytime in settings</p>
+              <p className="text-xs text-muted-foreground mt-2">You can change this anytime in settings</p>
             </div>
           </div>
         );
@@ -1009,12 +1009,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <div className="flex-shrink-0 z-10">
         <TitleBar
           showTitle={true}
-          className="bg-white/95 backdrop-blur-xl border-b border-stone-200/60 shadow-sm"
+          className="bg-card/95 backdrop-blur-xl border-b border-stone-200/60 shadow-sm"
         ></TitleBar>
       </div>
 
       {/* Progress Bar */}
-      <div className="flex-shrink-0 bg-white/90 backdrop-blur-xl border-b border-stone-200/60 p-6 md:px-16 z-10">
+      <div className="flex-shrink-0 bg-card/90 backdrop-blur-xl border-b border-stone-200/60 p-6 md:px-16 z-10">
         <div className="max-w-4xl mx-auto">
           <StepProgress steps={steps} currentStep={currentStep} />
         </div>
@@ -1023,7 +1023,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       {/* Content - This will grow to fill available space */}
       <div className="flex-1 px-6 md:pl-16 md:pr-6 py-12 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          <Card className="bg-white/95 backdrop-blur-xl border border-stone-200/60 shadow-lg rounded-2xl overflow-hidden">
+          <Card className="bg-card/95 backdrop-blur-xl border border-stone-200/60 shadow-lg rounded-2xl overflow-hidden">
             <CardContent className="p-12 md:p-16">
               <div className="space-y-8">{renderStep()}</div>
             </CardContent>
@@ -1032,7 +1032,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       </div>
 
       {/* Footer - This will stick to the bottom */}
-      <div className="flex-shrink-0 bg-white/95 backdrop-blur-xl border-t border-stone-200/60 px-6 md:pl-16 md:pr-6 py-8 z-10 shadow-sm">
+      <div className="flex-shrink-0 bg-card/95 backdrop-blur-xl border-t border-stone-200/60 px-6 md:pl-16 md:pr-6 py-8 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Button
             onClick={prevStep}
