@@ -177,6 +177,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getProcessStatus: () => ipcRenderer.invoke("get-process-status"),
   killLlamaProcess: () => ipcRenderer.invoke("kill-llama-process"),
 
+  // MLX server
+  mlxServerStart: (modelHfId) => ipcRenderer.invoke("mlx-server-start", modelHfId),
+  mlxServerStop: () => ipcRenderer.invoke("mlx-server-stop"),
+  mlxServerStatus: () => ipcRenderer.invoke("mlx-server-status"),
+  processMlxReasoning: (text, modelId, agentName, config) =>
+    ipcRenderer.invoke("process-mlx-reasoning", text, modelId, agentName, config),
+
   // llama.cpp
   llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),
   llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),

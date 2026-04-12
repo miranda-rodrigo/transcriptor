@@ -285,9 +285,33 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     return `${m}m ${s % 60}s`;
   };
 
+  const [mlxStarting, setMlxStarting] = useState(false);
+  const [mlxStopping, setMlxStopping] = useState(false);
+
+  const handleMlxStart = useCallback(async () => {
+    setMlxStarting(true);
+    try {
+      const result = await window.electronAPI.mlxServerStart("mlx-community/Qwen3-4B-4bit");
+      if (!result.success) {
+        console.error("Failed to start MLX server:", result.error);
+      }
+      fetchProcessStatus();
+    } catch (e) { console.error(e); }
+    finally { setMlxStarting(false); }
+  }, [fetchProcessStatus]);
+
+  const handleMlxStop = useCallback(async () => {
+    setMlxStopping(true);
+    try {
+      await window.electronAPI.mlxServerStop();
+      fetchProcessStatus();
+    } catch (e) { console.error(e); }
+    finally { setMlxStopping(false); }
+  }, [fetchProcessStatus]);
+
   const renderProcessStatus = () => {
     if (!processStatus) return null;
-    const { whisper, llama } = processStatus;
+    const { whisper, llama, mlx } = processStatus;
 
     return (
       <div className="space-y-6">
@@ -300,7 +324,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             Live status of background processes running on your system.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Whisper Server */}
           <div className={`p-4 rounded-lg border ${whisper.running ? "border-emerald-200 bg-emerald-50" : "border-neutral-200 bg-neutral-50"}`}>
             <div className="flex items-center justify-between mb-2">
@@ -324,7 +348,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           {/* Llama Inference */}
           <div className={`p-4 rounded-lg border ${llama.running ? "border-amber-200 bg-amber-50" : "border-neutral-200 bg-neutral-50"}`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-neutral-800">Llama Inference</span>
+              <span className="text-sm font-semibold text-neutral-800">Llama (GGUF)</span>
               <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${llama.running ? "bg-amber-100 text-amber-700" : "bg-neutral-100 text-neutral-500"}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${llama.running ? "bg-amber-500 animate-pulse" : "bg-neutral-400"}`} />
                 {llama.running ? "Processing" : "Idle"}
@@ -352,6 +376,55 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {!llama.running && (
               <p className="text-xs text-neutral-500">No active inference process.</p>
             )}
+          </div>
+
+          {/* MLX Server */}
+          <div className={`p-4 rounded-lg border ${mlx?.running ? "border-violet-200 bg-violet-50" : "border-neutral-200 bg-neutral-50"}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-neutral-800">MLX Server</span>
+              <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${mlx?.running ? "bg-violet-100 text-violet-700" : mlx?.available ? "bg-neutral-100 text-neutral-500" : "bg-red-50 text-red-400"}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${mlx?.running ? "bg-violet-500 animate-pulse" : mlx?.available ? "bg-neutral-400" : "bg-red-300"}`} />
+                {mlx?.running ? "Running" : mlx?.available ? "Ready" : "Unavailable"}
+              </span>
+            </div>
+            {mlx?.running && (
+              <div className="text-xs text-neutral-600 space-y-1">
+                {mlx.modelId && <p>Model: <span className="font-medium text-neutral-800">{mlx.modelId.split("/").pop()}</span></p>}
+                {mlx.port && <p>Port: <span className="font-mono text-neutral-800">{mlx.port}</span></p>}
+                {mlx.pid && <p>PID: <span className="font-mono text-neutral-800">{mlx.pid}</span></p>}
+              </div>
+            )}
+            {!mlx?.running && mlx?.available && (
+              <p className="text-xs text-neutral-500">MLX server idle. Starts automatically when needed.</p>
+            )}
+            {!mlx?.available && (
+              <p className="text-xs text-red-400">Python + mlx-lm not found.</p>
+            )}
+            <div className="mt-3 flex gap-2">
+              {mlx?.available && !mlx?.running && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleMlxStart}
+                  disabled={mlxStarting}
+                  className="flex-1 text-violet-600 border-violet-200 hover:bg-violet-50"
+                >
+                  {mlxStarting ? "Starting..." : "Start Server"}
+                </Button>
+              )}
+              {mlx?.running && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleMlxStop}
+                  disabled={mlxStopping}
+                  className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                  {mlxStopping ? "Stopping..." : "Stop Server"}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>

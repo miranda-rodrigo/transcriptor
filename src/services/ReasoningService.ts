@@ -378,6 +378,9 @@ class ReasoningService extends BaseReasoningService {
         case "groq":
           result = await this.processWithGroq(text, model, agentName, config);
           break;
+        case "mlx":
+          result = await this.processWithMlx(text, trimmedModel, agentName, config);
+          break;
         default:
           throw new Error(`Unsupported reasoning provider: ${provider}`);
       }
@@ -931,6 +934,39 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
+  private async processWithMlx(
+    text: string,
+    model: string,
+    agentName: string | null = null,
+    config: ReasoningConfig = {}
+  ): Promise<string> {
+    logger.logReasoning("MLX_START", { model, agentName });
+
+    if (typeof window !== "undefined" && window.electronAPI) {
+      const startTime = Date.now();
+      const result = await window.electronAPI.processMlxReasoning(text, model, agentName, config);
+      const processingTime = Date.now() - startTime;
+
+      if (result.success) {
+        logger.logReasoning("MLX_SUCCESS", {
+          model,
+          processingTimeMs: processingTime,
+          resultLength: result.text.length,
+        });
+        return result.text;
+      } else {
+        logger.logReasoning("MLX_ERROR", {
+          model,
+          processingTimeMs: processingTime,
+          error: result.error,
+        });
+        throw new Error(result.error);
+      }
+    }
+
+    throw new Error("MLX reasoning is not available in this environment");
+  }
+
   async isAvailable(): Promise<boolean> {
     try {
       // Check if we have at least one configured API key or local model available
@@ -939,6 +975,8 @@ class ReasoningService extends BaseReasoningService {
       const geminiKey = await window.electronAPI?.getGeminiKey?.();
       const groqKey = await window.electronAPI?.getGroqKey?.();
       const localAvailable = await window.electronAPI?.checkLocalReasoningAvailable?.();
+      const mlxStatus = await window.electronAPI?.mlxServerStatus?.();
+      const mlxAvailable = mlxStatus?.available || mlxStatus?.running;
 
       logger.logReasoning("API_KEY_CHECK", {
         hasOpenAI: !!openaiKey,
@@ -946,9 +984,10 @@ class ReasoningService extends BaseReasoningService {
         hasGemini: !!geminiKey,
         hasGroq: !!groqKey,
         hasLocal: !!localAvailable,
+        hasMlx: !!mlxAvailable,
       });
 
-      return !!(openaiKey || anthropicKey || geminiKey || groqKey || localAvailable);
+      return !!(openaiKey || anthropicKey || geminiKey || groqKey || localAvailable || mlxAvailable);
     } catch (error) {
       logger.logReasoning("API_KEY_CHECK_ERROR", {
         error: (error as Error).message,

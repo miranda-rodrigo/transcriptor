@@ -56,6 +56,21 @@ export interface TranscriptionProviderData {
   models: TranscriptionModelDefinition[];
 }
 
+export interface MlxModelDefinition {
+  id: string;
+  name: string;
+  hfId: string;
+  size: string;
+  description: string;
+  recommended?: boolean;
+}
+
+export interface MlxProviderData {
+  id: string;
+  name: string;
+  models: MlxModelDefinition[];
+}
+
 export interface WhisperModelInfo {
   name: string;
   description: string;
@@ -71,6 +86,7 @@ interface ModelRegistryData {
   transcriptionProviders: TranscriptionProviderData[];
   cloudProviders: CloudProviderData[];
   localProviders: LocalProviderData[];
+  mlxProviders?: MlxProviderData[];
 }
 
 const modelData: ModelRegistryData = modelDataRaw as ModelRegistryData;
@@ -186,13 +202,31 @@ function buildReasoningProviders(): ReasoningProviders {
   }
 
   providers.local = {
-    name: "Local AI",
+    name: "Local AI (llama.cpp)",
     models: modelRegistry.getAllModels().map((model) => ({
       value: model.id,
       label: model.name,
       description: `${model.description} (${model.size})`,
     })),
   };
+
+  const mlxProviders = (modelData as ModelRegistryData).mlxProviders || [];
+  const mlxModels: ReasoningModel[] = [];
+  for (const mlxProvider of mlxProviders) {
+    for (const model of mlxProvider.models) {
+      mlxModels.push({
+        value: model.id,
+        label: model.name,
+        description: `${model.description} (${model.size})`,
+      });
+    }
+  }
+  if (mlxModels.length > 0) {
+    providers.mlx = {
+      name: "Local AI (MLX - Apple Silicon)",
+      models: mlxModels,
+    };
+  }
 
   return providers;
 }
@@ -220,6 +254,8 @@ export function getReasoningModelLabel(modelId: string): string {
 }
 
 export function getModelProvider(modelId: string): string {
+  if (modelId.startsWith("mlx-")) return "mlx";
+
   const model = getAllReasoningModels().find((m) => m.value === modelId);
 
   if (!model) {
@@ -246,6 +282,20 @@ export function getModelProvider(modelId: string): string {
   }
 
   return model?.provider || "openai";
+}
+
+export function getMlxModelHfId(modelId: string): string | undefined {
+  const mlxProviders = (modelData as ModelRegistryData).mlxProviders || [];
+  for (const provider of mlxProviders) {
+    const model = provider.models.find((m) => m.id === modelId);
+    if (model) return model.hfId;
+  }
+  return undefined;
+}
+
+export function getAllMlxModels(): MlxModelDefinition[] {
+  const mlxProviders = (modelData as ModelRegistryData).mlxProviders || [];
+  return mlxProviders.flatMap((p) => p.models);
 }
 
 export function getTranscriptionProviders(): TranscriptionProviderData[] {

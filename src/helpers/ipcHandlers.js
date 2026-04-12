@@ -657,6 +657,102 @@ class IPCHandlers {
       }
     });
 
+    // MLX server handlers
+    const MlxServerManager = require("./mlxServer");
+    const mlxServer = new MlxServerManager();
+
+    ipcMain.handle("mlx-server-start", async (event, modelHfId) => {
+      try {
+        await mlxServer.start(modelHfId);
+        return { success: true, port: mlxServer.port };
+      } catch (error) {
+        debugLogger.error("MLX server start error:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("mlx-server-stop", async () => {
+      try {
+        await mlxServer.stop();
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("mlx-server-status", async () => {
+      return mlxServer.getStatus();
+    });
+
+    ipcMain.handle("process-mlx-reasoning", async (event, text, modelId, agentName, config) => {
+      try {
+        const modelRegistryData = require("../models/modelRegistryData.json");
+        const mlxProviders = modelRegistryData.mlxProviders || [];
+        let hfId = null;
+        for (const provider of mlxProviders) {
+          const model = provider.models.find((m) => m.id === modelId);
+          if (model) { hfId = model.hfId; break; }
+        }
+        if (!hfId) {
+          return { success: false, error: `MLX model ${modelId} not found in registry` };
+        }
+
+        if (!mlxServer.ready || mlxServer.modelId !== hfId) {
+          await mlxServer.start(hfId);
+        }
+
+        const customPrompts = config?.customPrompts || null;
+        const DEFAULT_REGULAR = "Clean up the following dictated text by fixing grammar, punctuation, and formatting. Output ONLY the cleaned text without any explanations, options, or commentary.";
+        const DEFAULT_AGENT = "You are {{agentName}}, a helpful AI assistant. Clean up the following dictated text. Remove any reference to your name. Output ONLY the cleaned text.";
+
+        let userContent;
+        if (agentName && text.toLowerCase().includes(agentName.toLowerCase())) {
+          const tpl = customPrompts?.agent || DEFAULT_AGENT;
+          userContent = tpl.replace(/\{\{agentName\}\}/g, agentName).replace(/\{\{text\}\}/g, text);
+        } else {
+          const tpl = customPrompts?.regular || DEFAULT_REGULAR;
+          userContent = tpl.replace(/\{\{text\}\}/g, text);
+        }
+
+        const messages = [
+          { role: "system", content: "You are a dictation assistant. Follow the user's instructions exactly. Output ONLY the processed text." },
+          { role: "user", content: userContent },
+        ];
+
+        const result = await mlxServer.chatCompletion(messages, {
+          temperature: config?.temperature ?? 0.3,
+          maxTokens: config?.maxTokens ?? 512,
+        });
+
+        return { success: true, text: result };
+      } catch (error) {
+        debugLogger.error("MLX reasoning error:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Update process status to include MLX
+    ipcMain.removeHandler("get-process-status");
+    ipcMain.handle("get-process-status", async () => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        const whisperStatus = this.whisperManager.getServerStatus();
+        const llamaStatus = modelManager.getInferenceStatus();
+        const mlxStatus = mlxServer.getStatus();
+        return { whisper: whisperStatus, llama: llamaStatus, mlx: mlxStatus };
+      } catch (error) {
+        debugLogger.error("Error getting process status:", error);
+        return {
+          whisper: { running: false },
+          llama: { running: false },
+          mlx: { running: false, available: false },
+        };
+      }
+    });
+
+    // Store mlxServer reference for cleanup
+    this.mlxServer = mlxServer;
+
     ipcMain.handle("open-whisper-models-folder", async () => {
       try {
         const modelsDir = this.whisperManager.getModelsDir();

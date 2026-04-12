@@ -320,5 +320,10 @@ if (gotSingleInstanceLock) {
       const modelManager = require("./src/helpers/modelManagerBridge").default;
       modelManager.killActiveProcess();
     } catch {}
+    try {
+      if (ipcHandlers?.mlxServer) {
+        ipcHandlers.mlxServer.stop().catch(() => {});
+      }
+    } catch {}
   });
 }

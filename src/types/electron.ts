@@ -225,8 +225,32 @@ declare global {
           pid?: number;
           runningForMs?: number;
         };
+        mlx?: {
+          available: boolean;
+          running: boolean;
+          port: number | null;
+          modelId: string | null;
+          pid: number | null;
+        };
       }>;
       killLlamaProcess: () => Promise<{ success: boolean; killed: boolean; error?: string }>;
+
+      // MLX server
+      mlxServerStart: (modelHfId: string) => Promise<{ success: boolean; port?: number; error?: string }>;
+      mlxServerStop: () => Promise<{ success: boolean; error?: string }>;
+      mlxServerStatus: () => Promise<{
+        available: boolean;
+        running: boolean;
+        port: number | null;
+        modelId: string | null;
+        pid: number | null;
+      }>;
+      processMlxReasoning: (
+        text: string,
+        modelId: string,
+        agentName: string | null,
+        config: any
+      ) => Promise<{ success: boolean; text?: string; error?: string }>;
 
       // llama.cpp management
       llamaCppCheck: () => Promise<{ isInstalled: boolean; version?: string }>;
