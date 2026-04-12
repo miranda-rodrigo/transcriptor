@@ -1,7 +1,13 @@
+export interface CustomPrompts {
+  agent?: string;
+  regular?: string;
+}
+
 export interface ReasoningConfig {
   maxTokens?: number;
   temperature?: number;
   contextSize?: number;
+  customPrompts?: CustomPrompts;
 }
 
 export abstract class BaseReasoningService {
@@ -15,19 +21,22 @@ export abstract class BaseReasoningService {
     agentName: string | null,
     config: ReasoningConfig = {}
   ): string {
-    // Default prompts
     const DEFAULT_AGENT_PROMPT = `You are {{agentName}}, a helpful AI assistant. Clean up the following dictated text by fixing grammar, punctuation, and formatting. Remove any reference to your name. Output ONLY the cleaned text without explanations or options:\n\n{{text}}`;
     const DEFAULT_REGULAR_PROMPT = `Clean up the following dictated text by fixing grammar, punctuation, and formatting. Output ONLY the cleaned text without any explanations, options, or commentary:\n\n{{text}}`;
 
-    // Get custom prompts from localStorage if available
     let agentPrompt = DEFAULT_AGENT_PROMPT;
     let regularPrompt = DEFAULT_REGULAR_PROMPT;
 
-    if (typeof window !== "undefined" && window.localStorage) {
-      const customPrompts = window.localStorage.getItem("customPrompts");
-      if (customPrompts) {
+    // Priority 1: customPrompts passed explicitly in config (works in main process too)
+    if (config.customPrompts) {
+      agentPrompt = config.customPrompts.agent || DEFAULT_AGENT_PROMPT;
+      regularPrompt = config.customPrompts.regular || DEFAULT_REGULAR_PROMPT;
+    } else if (typeof window !== "undefined" && window.localStorage) {
+      // Priority 2: localStorage (renderer process only)
+      const stored = window.localStorage.getItem("customPrompts");
+      if (stored) {
         try {
-          const parsed = JSON.parse(customPrompts);
+          const parsed = JSON.parse(stored);
           agentPrompt = parsed.agent || DEFAULT_AGENT_PROMPT;
           regularPrompt = parsed.regular || DEFAULT_REGULAR_PROMPT;
         } catch (error) {

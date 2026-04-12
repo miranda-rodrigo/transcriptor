@@ -210,6 +210,24 @@ declare global {
         config: any
       ) => Promise<{ success: boolean; text?: string; error?: string }>;
 
+      // Process status and control
+      getProcessStatus: () => Promise<{
+        whisper: {
+          available: boolean;
+          running: boolean;
+          port: number | null;
+          modelPath: string | null;
+          modelName: string | null;
+        };
+        llama: {
+          running: boolean;
+          modelId?: string;
+          pid?: number;
+          runningForMs?: number;
+        };
+      }>;
+      killLlamaProcess: () => Promise<{ success: boolean; killed: boolean; error?: string }>;
+
       // llama.cpp management
       llamaCppCheck: () => Promise<{ isInstalled: boolean; version?: string }>;
       llamaCppInstall: () => Promise<{ success: boolean; error?: string }>;

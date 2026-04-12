@@ -47,6 +47,10 @@ class LocalReasoningService {
         hasCustomPrompts: !!customPrompts,
       });
 
+      const systemPrompt = customPrompts
+        ? "Follow the user's instructions exactly. Output ONLY the processed text."
+        : "You are a helpful AI assistant that processes and improves text. Output ONLY the processed text.";
+
       const inferenceConfig = {
         maxTokens: config.maxTokens || this.calculateMaxTokens(text.length),
         temperature: config.temperature || 0.7,
@@ -55,7 +59,7 @@ class LocalReasoningService {
         repeatPenalty: config.repeatPenalty || 1.1,
         contextSize: config.contextSize || 4096,
         threads: config.threads || 4,
-        systemPrompt: "You are a helpful AI assistant that processes and improves text.",
+        systemPrompt,
       };
 
       debugLogger.logReasoning("LOCAL_BRIDGE_INFERENCE", {
@@ -92,16 +96,9 @@ class LocalReasoningService {
     }
   }
 
-  getCustomPrompts() {
-    // In main process, we can't access localStorage directly
-    // This should be passed from the renderer process
-    return null;
-  }
-
   getReasoningPrompt(text, agentName, customPrompts) {
-    // Default prompts
-    const DEFAULT_AGENT_PROMPT = `You are {{agentName}}, a helpful AI assistant. Process and improve the following text, removing any reference to your name from the output:\n\n{{text}}\n\nImproved text:`;
-    const DEFAULT_REGULAR_PROMPT = `Process and improve the following text:\n\n{{text}}\n\nImproved text:`;
+    const DEFAULT_AGENT_PROMPT = `You are {{agentName}}, a helpful AI assistant. Clean up the following dictated text by fixing grammar, punctuation, and formatting. Remove any reference to your name. Output ONLY the cleaned text without explanations or options:\n\n{{text}}`;
+    const DEFAULT_REGULAR_PROMPT = `Clean up the following dictated text by fixing grammar, punctuation, and formatting. Output ONLY the cleaned text without any explanations, options, or commentary:\n\n{{text}}`;
 
     let agentPrompt = DEFAULT_AGENT_PROMPT;
     let regularPrompt = DEFAULT_REGULAR_PROMPT;

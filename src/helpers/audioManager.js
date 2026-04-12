@@ -437,17 +437,32 @@ class AudioManager {
     return new Blob([arrayBuffer], { type: "audio/wav" });
   }
 
+  getCustomPrompts() {
+    if (typeof window === "undefined" || !window.localStorage) return null;
+    try {
+      const raw = localStorage.getItem("customPrompts");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed.agent || parsed.regular) return parsed;
+    } catch {}
+    return null;
+  }
+
   async processWithReasoningModel(text, model, agentName) {
+    const customPrompts = this.getCustomPrompts();
+
     logger.logReasoning("CALLING_REASONING_SERVICE", {
       model,
       agentName,
       textLength: text.length,
+      hasCustomPrompts: !!customPrompts,
     });
 
     const startTime = Date.now();
+    const config = customPrompts ? { customPrompts } : {};
 
     try {
-      const result = await ReasoningService.processText(text, model, agentName);
+      const result = await ReasoningService.processText(text, model, agentName, config);
 
       const processingTime = Date.now() - startTime;
 

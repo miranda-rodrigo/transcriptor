@@ -630,6 +630,33 @@ class IPCHandlers {
     ipcMain.handle("open-sound-input-settings", () => openSystemSettings("sound"));
     ipcMain.handle("open-accessibility-settings", () => openSystemSettings("accessibility"));
 
+    // Process status and control
+    ipcMain.handle("get-process-status", async () => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        const whisperStatus = this.whisperManager.getServerStatus();
+        const llamaStatus = modelManager.getInferenceStatus();
+        return { whisper: whisperStatus, llama: llamaStatus };
+      } catch (error) {
+        debugLogger.error("Error getting process status:", error);
+        return {
+          whisper: { running: false },
+          llama: { running: false },
+        };
+      }
+    });
+
+    ipcMain.handle("kill-llama-process", async () => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        const killed = modelManager.killActiveProcess();
+        return { success: true, killed };
+      } catch (error) {
+        debugLogger.error("Error killing llama process:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
     ipcMain.handle("open-whisper-models-folder", async () => {
       try {
         const modelsDir = this.whisperManager.getModelsDir();

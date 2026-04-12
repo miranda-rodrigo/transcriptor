@@ -29,13 +29,16 @@ class ModelNotFoundError extends ModelError {
   }
 }
 
+const INFERENCE_TIMEOUT_MS = 120_000; // 2 minutes
+
 class ModelManager {
   constructor() {
     this.modelsDir = this.getModelsDir();
     this.downloadProgress = new Map();
     this.activeDownloads = new Map();
-    this.activeRequests = new Map(); // Track HTTP requests for cancellation
+    this.activeRequests = new Map();
     this.llamaCppPath = null;
+    this.activeInference = null; // { process, modelId, startTime, timeout }
     this.ensureModelsDirExists();
   }
 
@@ -418,6 +421,10 @@ class ModelManager {
   }
 
   async runInference(modelId, prompt, options = {}) {
+    if (this.activeInference) {
+      this.killActiveProcess();
+    }
+
     await this.ensureLlamaCpp();
 
     const modelInfo = this.findModelById(modelId);
@@ -430,9 +437,7 @@ class ModelManager {
       throw new ModelError(
         `Model ${modelId} is not downloaded or is corrupted`,
         "MODEL_NOT_DOWNLOADED",
-        {
-          modelId,
-        }
+        { modelId }
       );
     }
 
@@ -441,6 +446,8 @@ class ModelManager {
       prompt,
       options.systemPrompt || ""
     );
+
+    const timeoutMs = options.timeout || INFERENCE_TIMEOUT_MS;
 
     return new Promise((resolve, reject) => {
       const args = [
@@ -465,39 +472,101 @@ class ModelManager {
         "--no-display-prompt",
       ];
 
-      const process = spawn(this.llamaCppPath, args);
+      const proc = spawn(this.llamaCppPath, args);
       let output = "";
-      let error = "";
+      let stderrOutput = "";
+      let settled = false;
 
-      process.stdout.on("data", (data) => {
+      const cleanup = () => {
+        settled = true;
+        if (this.activeInference && this.activeInference.process === proc) {
+          clearTimeout(this.activeInference.timeout);
+          this.activeInference = null;
+        }
+      };
+
+      const timeoutHandle = setTimeout(() => {
+        if (!settled) {
+          cleanup();
+          try { proc.kill("SIGKILL"); } catch {}
+          reject(
+            new ModelError(
+              `Inference timed out after ${timeoutMs / 1000}s`,
+              "INFERENCE_TIMEOUT",
+              { modelId, timeoutMs }
+            )
+          );
+        }
+      }, timeoutMs);
+
+      this.activeInference = {
+        process: proc,
+        modelId,
+        startTime: Date.now(),
+        timeout: timeoutHandle,
+        pid: proc.pid,
+      };
+
+      proc.stdout.on("data", (data) => {
         output += data.toString();
       });
 
-      process.stderr.on("data", (data) => {
-        error += data.toString();
+      proc.stderr.on("data", (data) => {
+        stderrOutput += data.toString();
       });
 
-      process.on("close", (code) => {
+      proc.on("close", (code) => {
+        if (settled) return;
+        cleanup();
         if (code !== 0) {
           reject(
-            new ModelError(`Inference failed with code ${code}: ${error}`, "INFERENCE_FAILED", {
-              code,
-              error,
-            })
+            new ModelError(
+              `Inference failed with code ${code}: ${stderrOutput}`,
+              "INFERENCE_FAILED",
+              { code, error: stderrOutput }
+            )
           );
         } else {
           resolve(output.trim());
         }
       });
 
-      process.on("error", (err) => {
+      proc.on("error", (err) => {
+        if (settled) return;
+        cleanup();
         reject(
-          new ModelError(`Failed to start inference: ${err.message}`, "INFERENCE_START_FAILED", {
-            error: err.message,
-          })
+          new ModelError(
+            `Failed to start inference: ${err.message}`,
+            "INFERENCE_START_FAILED",
+            { error: err.message }
+          )
         );
       });
     });
+  }
+
+  killActiveProcess() {
+    if (!this.activeInference) return false;
+    const { process: proc, timeout } = this.activeInference;
+    clearTimeout(timeout);
+    this.activeInference = null;
+    try {
+      proc.kill("SIGKILL");
+    } catch {}
+    return true;
+  }
+
+  getInferenceStatus() {
+    if (!this.activeInference) {
+      return { running: false };
+    }
+    const { modelId, startTime, pid } = this.activeInference;
+    return {
+      running: true,
+      modelId,
+      pid,
+      runningForMs: Date.now() - startTime,
+    };
   }
 
   formatPrompt(provider, text, systemPrompt) {

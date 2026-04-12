@@ -173,6 +173,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   processAnthropicReasoning: (text, modelId, agentName, config) =>
     ipcRenderer.invoke("process-anthropic-reasoning", text, modelId, agentName, config),
   
+  // Process status and control
+  getProcessStatus: () => ipcRenderer.invoke("get-process-status"),
+  killLlamaProcess: () => ipcRenderer.invoke("kill-llama-process"),
+
   // llama.cpp
   llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),
   llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),

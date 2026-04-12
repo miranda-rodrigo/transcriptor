@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { RefreshCw, Download, Command, Mic, Shield, FolderOpen } from "lucide-react";
+import { RefreshCw, Download, Command, Mic, Shield, FolderOpen, Activity, XCircle } from "lucide-react";
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
@@ -247,11 +247,123 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     });
   }, [isRemovingModels, cachePathHint, showConfirmDialog, showAlertDialog]);
 
+  // Process status state
+  const [processStatus, setProcessStatus] = useState<{
+    whisper: { available: boolean; running: boolean; port: number | null; modelName: string | null };
+    llama: { running: boolean; modelId?: string; pid?: number; runningForMs?: number };
+  } | null>(null);
+  const [isKillingLlama, setIsKillingLlama] = useState(false);
+
+  const fetchProcessStatus = useCallback(async () => {
+    try {
+      const status = await window.electronAPI.getProcessStatus();
+      setProcessStatus(status);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (activeSection !== "general") return;
+    fetchProcessStatus();
+    const interval = setInterval(fetchProcessStatus, 5000);
+    return () => clearInterval(interval);
+  }, [activeSection, fetchProcessStatus]);
+
+  const handleKillLlama = useCallback(async () => {
+    setIsKillingLlama(true);
+    try {
+      await window.electronAPI.killLlamaProcess();
+      await fetchProcessStatus();
+    } catch {}
+    setIsKillingLlama(false);
+  }, [fetchProcessStatus]);
+
+  const formatUptime = (ms: number) => {
+    if (ms < 1000) return `${ms}ms`;
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    return `${m}m ${s % 60}s`;
+  };
+
+  const renderProcessStatus = () => {
+    if (!processStatus) return null;
+    const { whisper, llama } = processStatus;
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+            <Activity className="w-5 h-5" />
+            Process Status
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Live status of background processes running on your system.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Whisper Server */}
+          <div className={`p-4 rounded-lg border ${whisper.running ? "border-emerald-200 bg-emerald-50" : "border-neutral-200 bg-neutral-50"}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-neutral-800">Whisper Server</span>
+              <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${whisper.running ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-500"}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${whisper.running ? "bg-emerald-500 animate-pulse" : "bg-neutral-400"}`} />
+                {whisper.running ? "Running" : "Stopped"}
+              </span>
+            </div>
+            {whisper.running && (
+              <div className="text-xs text-neutral-600 space-y-1">
+                {whisper.modelName && <p>Model: <span className="font-medium text-neutral-800">{whisper.modelName}</span></p>}
+                {whisper.port && <p>Port: <span className="font-mono text-neutral-800">{whisper.port}</span></p>}
+              </div>
+            )}
+            {!whisper.running && (
+              <p className="text-xs text-neutral-500">No active transcription server.</p>
+            )}
+          </div>
+
+          {/* Llama Inference */}
+          <div className={`p-4 rounded-lg border ${llama.running ? "border-amber-200 bg-amber-50" : "border-neutral-200 bg-neutral-50"}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-neutral-800">Llama Inference</span>
+              <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${llama.running ? "bg-amber-100 text-amber-700" : "bg-neutral-100 text-neutral-500"}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${llama.running ? "bg-amber-500 animate-pulse" : "bg-neutral-400"}`} />
+                {llama.running ? "Processing" : "Idle"}
+              </span>
+            </div>
+            {llama.running && (
+              <>
+                <div className="text-xs text-neutral-600 space-y-1">
+                  {llama.modelId && <p>Model: <span className="font-medium text-neutral-800">{llama.modelId}</span></p>}
+                  {llama.pid && <p>PID: <span className="font-mono text-neutral-800">{llama.pid}</span></p>}
+                  {llama.runningForMs != null && <p>Uptime: <span className="font-medium text-neutral-800">{formatUptime(llama.runningForMs)}</span></p>}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleKillLlama}
+                  disabled={isKillingLlama}
+                  className="mt-3 w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                >
+                  <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                  {isKillingLlama ? "Killing..." : "Kill Process"}
+                </Button>
+              </>
+            )}
+            {!llama.running && (
+              <p className="text-xs text-neutral-500">No active inference process.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderSectionContent = () => {
     switch (activeSection) {
       case "general":
         return (
           <div className="space-y-8">
+            {renderProcessStatus()}
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">App Updates</h3>

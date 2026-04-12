@@ -315,7 +315,10 @@ if (gotSingleInstanceLock) {
     globalShortcut.unregisterAll();
     globeKeyManager.stop();
     updateManager.cleanup();
-    // Stop whisper server if running
     whisperManager.stopServer().catch(() => {});
+    try {
+      const modelManager = require("./src/helpers/modelManagerBridge").default;
+      modelManager.killActiveProcess();
+    } catch {}
   });
 }
