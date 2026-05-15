@@ -104,6 +104,20 @@ class WindowManager {
     this.mainWindow.loadURL(appUrl);
   }
 
+  ensureDictationPanelHidden() {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return;
+    }
+
+    if (this.mainWindow.isMinimized && this.mainWindow.isMinimized()) {
+      return;
+    }
+
+    if (this.mainWindow.isVisible()) {
+      this.mainWindow.hide();
+    }
+  }
+
   createHotkeyCallback() {
     let lastToggleTime = 0;
     const DEBOUNCE_MS = 150;

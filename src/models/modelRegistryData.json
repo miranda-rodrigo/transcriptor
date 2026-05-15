@@ -229,6 +229,27 @@
       "name": "Qwen (MLX)",
       "models": [
         {
+          "id": "mlx-qwen2.5-0.5b-instruct-4bit",
+          "name": "Qwen2.5 0.5B Instruct (MLX 4-bit)",
+          "hfId": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+          "size": "278MB",
+          "description": "Ultra-light Qwen 2.5 instruct model with 4-bit quantization"
+        },
+        {
+          "id": "mlx-qwen2.5-0.5b-instruct-bf16",
+          "name": "Qwen2.5 0.5B Instruct (MLX bf16)",
+          "hfId": "mlx-community/Qwen2.5-0.5B-Instruct-bf16",
+          "size": "988MB",
+          "description": "Full-precision bf16 variant for better quality on Apple Silicon"
+        },
+        {
+          "id": "mlx-qwen2.5-0.5b-instruct-lmstudio-4bit",
+          "name": "Qwen2.5 0.5B Instruct (LM Studio MLX 4-bit)",
+          "hfId": "lmstudio-community/Qwen2.5-0.5B-Instruct-MLX-4bit",
+          "size": "278MB",
+          "description": "LM Studio community MLX build with 4-bit quantization"
+        },
+        {
           "id": "mlx-qwen3-4b-4bit",
           "name": "Qwen3 4B (MLX 4-bit)",
           "hfId": "mlx-community/Qwen3-4B-4bit",
