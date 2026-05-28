@@ -291,6 +291,7 @@ class AudioManager {
         timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
 
         if (text !== null && text !== undefined) {
+          window.electronAPI?.appendTrainingData?.(result.text, text, "local");
           return { success: true, text: text || result.text, source: "local", timings };
         } else {
           throw new Error("No text transcribed");
@@ -364,6 +365,7 @@ class AudioManager {
         timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
 
         if (text !== null && text !== undefined) {
+          window.electronAPI?.appendTrainingData?.(result.text, text, "local-parakeet");
           return { success: true, text: text || result.text, source: "local-parakeet", timings };
         }
         throw new Error("No text transcribed");
@@ -1077,6 +1079,7 @@ class AudioManager {
           },
           "transcription"
         );
+        window.electronAPI?.appendTrainingData?.(result.text, text, source);
         return { success: true, text, source, timings };
       } else {
         // Log at info level so it shows without debug mode

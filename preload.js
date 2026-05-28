@@ -222,6 +222,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openAccessibilitySettings: () => ipcRenderer.invoke("open-accessibility-settings"),
   openWhisperModelsFolder: () => ipcRenderer.invoke("open-whisper-models-folder"),
 
+  // Training data logger
+  appendTrainingData: (rawText, refinedText, source) =>
+    ipcRenderer.invoke("append-training-data", rawText, refinedText, source),
+  getTrainingDataCount: () => ipcRenderer.invoke("get-training-data-count"),
+  getTrainingDataPath: () => ipcRenderer.invoke("get-training-data-path"),
+  openTrainingDataFolder: () => ipcRenderer.invoke("open-training-data-folder"),
+  exportTrainingData: () => ipcRenderer.invoke("export-training-data"),
+
   // Globe key listener for hotkey capture (macOS only)
   onGlobeKeyPressed: (callback) => {
     const listener = () => callback?.();

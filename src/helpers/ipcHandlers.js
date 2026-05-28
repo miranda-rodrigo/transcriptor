@@ -1,4 +1,6 @@
-const { ipcMain, app, shell, BrowserWindow } = require("electron");
+const { ipcMain, app, shell, BrowserWindow, dialog } = require("electron");
+const fs = require("fs");
+const path = require("path");
 const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
 
@@ -919,6 +921,68 @@ class IPCHandlers {
         return { success: true };
       } catch (error) {
         debugLogger.error("Failed to open whisper models folder:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Training data logger handlers
+    const trainingDataLogger = require("./trainingDataLogger");
+
+    ipcMain.handle("append-training-data", (event, rawText, refinedText, source) => {
+      try {
+        trainingDataLogger.append(rawText, refinedText, source);
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Failed to append training data:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("get-training-data-count", () => {
+      return trainingDataLogger.getCount();
+    });
+
+    ipcMain.handle("get-training-data-path", () => {
+      return trainingDataLogger.getFilePath();
+    });
+
+    ipcMain.handle("open-training-data-folder", async () => {
+      try {
+        const filePath = trainingDataLogger.getFilePath();
+        shell.showItemInFolder(filePath);
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Failed to open training data folder:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("export-training-data", async () => {
+      try {
+        const sourcePath = trainingDataLogger.getFilePath();
+        if (!fs.existsSync(sourcePath)) {
+          return { success: false, error: "No training data collected yet." };
+        }
+        const parentWindow =
+          BrowserWindow.getFocusedWindow() ||
+          this.windowManager?.controlPanelWindow ||
+          this.windowManager?.mainWindow ||
+          null;
+        const defaultName = `openwhispr-training-data-${new Date()
+          .toISOString()
+          .slice(0, 10)}.jsonl`;
+        const { canceled, filePath } = await dialog.showSaveDialog(parentWindow, {
+          title: "Export Training Data",
+          defaultPath: path.join(app.getPath("downloads"), defaultName),
+          filters: [{ name: "JSON Lines", extensions: ["jsonl"] }],
+        });
+        if (canceled || !filePath) {
+          return { success: false, canceled: true };
+        }
+        fs.copyFileSync(sourcePath, filePath);
+        return { success: true, filePath };
+      } catch (error) {
+        debugLogger.error("Failed to export training data:", error);
         return { success: false, error: error.message };
       }
     });

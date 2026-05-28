@@ -257,6 +257,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     llama: { running: boolean; modelId?: string; pid?: number; runningForMs?: number };
   } | null>(null);
   const [isKillingLlama, setIsKillingLlama] = useState(false);
+  const [trainingDataCount, setTrainingDataCount] = useState<number>(0);
 
   const fetchProcessStatus = useCallback(async () => {
     try {
@@ -265,12 +266,45 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     } catch {}
   }, []);
 
+  const fetchTrainingDataCount = useCallback(async () => {
+    try {
+      const count = await window.electronAPI?.getTrainingDataCount?.();
+      if (typeof count === "number") setTrainingDataCount(count);
+    } catch {}
+  }, []);
+
+  const handleExportTrainingData = useCallback(async () => {
+    try {
+      const result = await window.electronAPI?.exportTrainingData?.();
+      if (result?.success && result.filePath) {
+        showAlertDialog({
+          title: "Export Complete",
+          description: `Training data saved to:\n${result.filePath}`,
+        });
+      } else if (result && !result.success && !result.canceled) {
+        showAlertDialog({
+          title: "Export Failed",
+          description: result.error || "Could not export the training data file.",
+        });
+      }
+    } catch {
+      showAlertDialog({
+        title: "Export Failed",
+        description: "Could not export the training data file.",
+      });
+    }
+  }, [showAlertDialog]);
+
   useEffect(() => {
     if (activeSection !== "general") return;
     fetchProcessStatus();
-    const interval = setInterval(fetchProcessStatus, 5000);
+    fetchTrainingDataCount();
+    const interval = setInterval(() => {
+      fetchProcessStatus();
+      fetchTrainingDataCount();
+    }, 5000);
     return () => clearInterval(interval);
-  }, [activeSection, fetchProcessStatus]);
+  }, [activeSection, fetchProcessStatus, fetchTrainingDataCount]);
 
   const handleKillLlama = useCallback(async () => {
     setIsKillingLlama(true);
@@ -391,6 +425,50 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-8">
             {renderProcessStatus()}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Fine-tuning Dataset</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Every transcription where AI reasoning changes the text is saved as a training pair for future model fine-tuning.
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Pairs collected</p>
+                  <p className="text-2xl font-semibold text-foreground">{trainingDataCount}</p>
+                  {trainingDataCount > 0 && trainingDataCount < 100 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {100 - trainingDataCount} more until you have enough to fine-tune
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={trainingDataCount === 0}
+                    onClick={handleExportTrainingData}
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={trainingDataCount === 0}
+                    onClick={() => {
+                      fetchTrainingDataCount();
+                      window.electronAPI?.openTrainingDataFolder?.();
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                    Open file
+                  </Button>
+                </div>
+              </div>
+            </div>
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">App Updates</h3>

@@ -288,6 +288,13 @@ declare global {
       llamaCppInstall: () => Promise<{ success: boolean; error?: string }>;
       llamaCppUninstall: () => Promise<{ success: boolean; error?: string }>;
 
+      // Training data logger
+      appendTrainingData?: (rawText: string, refinedText: string, source: string) => Promise<{ success: boolean; error?: string }>;
+      getTrainingDataCount?: () => Promise<number>;
+      getTrainingDataPath?: () => Promise<string>;
+      openTrainingDataFolder?: () => Promise<{ success: boolean; error?: string }>;
+      exportTrainingData?: () => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
+
       // Window control operations
       windowMinimize: () => Promise<void>;
       windowMaximize: () => Promise<void>;
