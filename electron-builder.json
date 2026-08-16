@@ -112,7 +112,6 @@
     "hardenedRuntime": true,
     "entitlements": "resources/mac/entitlements.mac.plist",
     "entitlementsInherit": "resources/mac/entitlements.mac.plist",
-    "identity": "HeroTools Inc. (9R85XFMH59)",
     "extendInfo": {
       "LSUIElement": true,
       "NSMicrophoneUsageDescription": "OpenWhispr needs microphone access for speech-to-text transcription.",
@@ -134,8 +133,8 @@
   },
   "publish": {
     "provider": "github",
-    "owner": "HeroTools",
-    "repo": "open-whispr",
+    "owner": "miranda-rodrigo",
+    "repo": "transcriptor",
     "private": false,
     "releaseType": "draft"
   }
