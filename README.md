@@ -28,7 +28,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🗄️ **Transcription History**: SQLite database stores all your transcriptions locally
 - 🔧 **Model Management**: Download and manage local Whisper models (tiny, base, small, medium, large, turbo)
 - 🧹 **Model Cleanup**: One-click removal of cached Whisper models with uninstall hooks to keep disks tidy
-- 🌐 **Cross-Platform**: Works on macOS, Windows, and Linux
+- 🍎 **macOS**: Ships as a signed, notarized DMG (drag to Applications)
 - ⚡ **Automatic Pasting**: Transcribed text automatically pastes at your cursor location
 - 🖱️ **Draggable Interface**: Move the dictation panel anywhere on your screen
 - 🔄 **OpenAI Responses API**: Using the latest Responses API for improved performance
@@ -38,7 +38,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Prerequisites
 
 - **Node.js 18+** and npm (Download from [nodejs.org](https://nodejs.org/))
-- **macOS 10.15+**, **Windows 10+**, or **Linux**
+- **macOS 10.15+** (Apple Silicon or Intel). The installable product is the notarized DMG.
 - On macOS, Globe key support requires the Xcode Command Line Tools (`xcode-select --install`) so the bundled Swift helper can run
 
 ## Quick Start
@@ -92,122 +92,27 @@ If you want to build a standalone app for personal use:
 # Build without code signing (no certificates required)
 npm run pack
 
-# The unsigned app will be in: dist/mac-arm64/OpenWhispr.app (macOS)
-# or dist/win-unpacked/OpenWhispr.exe (Windows)
-# or dist/linux-unpacked/open-whispr (Linux)
+# The unsigned app will be in: dist/mac-arm64/OpenWhispr.app
 ```
 
-**Note**: On macOS, you may see a security warning when first opening the unsigned app. Right-click and select "Open" to bypass this.
+**Note**: Unsigned local builds show a Gatekeeper warning. Right-click and select "Open". The product users install is the signed, notarized DMG from `npm run build:mac`.
 
-#### Linux (Multiple Package Formats)
+#### Install from the DMG
 
-OpenWhispr now supports multiple Linux package formats for maximum compatibility:
+1. Open `OpenWhispr-<version>-<arch>.dmg`
+2. Drag **OpenWhispr** onto **Applications** (or `~/Applications` without admin)
+3. Eject the disk image
+4. Launch from Applications — do not run the app from the mounted DMG
 
-**Available Formats**:
-- `.deb` - Debian, Ubuntu, Linux Mint, Pop!_OS
-- `.rpm` - Fedora, Red Hat, CentOS, openSUSE
-- `.tar.gz` - Universal archive (works on any distro)
-- `.flatpak` - Sandboxed cross-distro package
-- `AppImage` - Portable single-file executable
-
-**Building Linux Packages**:
-
-```bash
-# Build default Linux package formats (AppImage, deb, rpm, tar.gz)
-npm run build:linux
-
-# Find packages in dist/:
-# - OpenWhispr-x.x.x-linux-x64.AppImage
-# - OpenWhispr-x.x.x-linux-x64.deb
-# - OpenWhispr-x.x.x-linux-x64.rpm
-# - OpenWhispr-x.x.x-linux-x64.tar.gz
-```
-
-**Optional: Building Flatpak** (requires additional setup):
-
-```bash
-# Install Flatpak build tools
-sudo apt install flatpak flatpak-builder  # Debian/Ubuntu
-# OR
-sudo dnf install flatpak flatpak-builder  # Fedora/RHEL
-
-# Add Flathub repository and install runtime
-flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-flatpak install --user -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
-
-# Add "flatpak" to linux.target in electron-builder.json, then build
-npm run build:linux
-```
-
-**Installation Examples**:
-
-```bash
-# Debian/Ubuntu
-sudo apt install ./dist/OpenWhispr-*-linux-x64.deb
-
-# Fedora/RHEL
-sudo dnf install ./dist/OpenWhispr-*-linux-x64.rpm
-
-# Universal tar.gz (no root required)
-tar -xzf dist/OpenWhispr-*-linux-x64.tar.gz
-cd OpenWhispr-*/
-./openwhispr
-
-# Flatpak
-flatpak install --user ./dist/OpenWhispr-*-linux-x64.flatpak
-
-# AppImage (existing method)
-chmod +x dist/OpenWhispr-*.AppImage
-./dist/OpenWhispr-*.AppImage
-```
-
-**Optional Dependencies for Automatic Paste**:
-
-The clipboard paste feature requires platform-specific tools:
-
-**X11 (Traditional Linux Desktop)**:
-```bash
-# Debian/Ubuntu
-sudo apt install xdotool
-
-# Fedora/RHEL
-sudo dnf install xdotool
-
-# Arch
-sudo pacman -S xdotool
-```
-
-**Wayland (Modern Linux Desktop)**:
-```bash
-# Debian/Ubuntu
-sudo apt install wtype
-
-# Fedora/RHEL
-sudo dnf install wtype
-
-# Arch
-sudo pacman -S wtype
-
-# Alternative: ydotool (requires uinput permissions)
-sudo apt install ydotool  # or equivalent for your distro
-
-# On KDE Wayland you will additionally need `kdotool` to detect if a terminal is focused for automatically pasting with Ctrl+Shift+V instead of Ctrl+V. Automatic terminal detection on non-KDE Wayland is not yet supported.
-sudo apt install kdotool # or equivalent for your distro
-```
-
-> ℹ️ **Note**: OpenWhispr automatically detects your display server (X11 vs Wayland) and uses the appropriate paste tool. If no paste tool is installed, text will still be copied to the clipboard - you'll just need to paste manually with Ctrl+V.
-
-> 🔒 **Flatpak Security**: The Flatpak package includes sandboxing with explicit permissions for microphone, clipboard, and file access. See [electron-builder.json](electron-builder.json) for the complete permission list.
+The zip next to the DMG is only for in-app auto-update (`electron-updater`).
 
 ### Building for Distribution
 
 For maintainers who need to distribute signed builds:
 
 ```bash
-# Requires code signing certificates and notarization setup
-npm run build:mac    # macOS (requires Apple Developer account)
-npm run build:win    # Windows (requires code signing cert)
-npm run build:linux  # Linux
+# Requires Apple Developer signing + notarization
+npm run build:mac
 ```
 
 ### First Time Setup
@@ -339,13 +244,10 @@ open-whispr/
 - `npm run start` - Start production build
 - `npm run setup` - First-time setup (creates .env file)
 - `npm run build:renderer` - Build the React app only
-- `npm run download:whisper-cpp` - Download whisper.cpp for the current platform
-- `npm run download:whisper-cpp:all` - Download whisper.cpp for all platforms
-- `npm run build` - Full build with signing (requires certificates)
-- `npm run build:mac` - macOS build with signing
-- `npm run build:win` - Windows build with signing
-- `npm run build:linux` - Linux build
-- `npm run pack` - Build without signing (for personal use)
+- `npm run download:whisper-cpp` - Download whisper.cpp for this Mac
+- `npm run build` - Full signed/notarized macOS build
+- `npm run build:mac` - Signed DMG + zip (auto-update)
+- `npm run pack` - Unsigned local `.app` (no certificates)
 - `npm run dist` - Build and package with signing
 - `npm run lint` - Run ESLint
 - `npm run preview` - Preview production build
@@ -383,14 +285,11 @@ The build process creates a single executable for your platform:
 # Development build
 npm run pack
 
-# Production builds
-npm run dist           # Current platform
-npm run build:mac      # macOS DMG + ZIP
-npm run build:win      # Windows NSIS + Portable
-npm run build:linux    # AppImage + DEB
+# Production DMG
+npm run build:mac
 ```
 
-Note: build/pack/dist scripts download whisper.cpp for the current platform automatically. For multi-platform packaging from one host, run `npm run download:whisper-cpp:all` first.
+Note: `build`/`pack`/`dist` download the macOS whisper.cpp binary automatically.
 
 ## Configuration
 

@@ -14,9 +14,19 @@ const SUGGESTED_HOTKEYS = {
 
 class HotkeyManager {
   constructor() {
-    this.currentHotkey = "`";
+    this.currentHotkey = null;
     this.isInitialized = false;
     this.isListeningMode = false;
+  }
+
+  isHotkeyActivelyRegistered(hotkey) {
+    if (!hotkey) {
+      return false;
+    }
+    if (hotkey === "GLOBE") {
+      return this.currentHotkey === "GLOBE";
+    }
+    return globalShortcut.isRegistered(hotkey);
   }
 
   setListeningMode(enabled) {
@@ -85,10 +95,10 @@ class HotkeyManager {
     debugLogger.log(`[HotkeyManager] Platform: ${process.platform}, Arch: ${process.arch}`);
     debugLogger.log(`[HotkeyManager] Current hotkey: "${this.currentHotkey}"`);
 
-    // If we're already using this hotkey, just return success
-    if (hotkey === this.currentHotkey) {
+    // Only skip registration when this hotkey is actually active in the OS
+    if (hotkey === this.currentHotkey && this.isHotkeyActivelyRegistered(hotkey)) {
       debugLogger.log(
-        `[HotkeyManager] Hotkey "${hotkey}" is already the current hotkey, no change needed`
+        `[HotkeyManager] Hotkey "${hotkey}" is already registered, no change needed`
       );
       return { success: true, hotkey };
     }
@@ -103,6 +113,7 @@ class HotkeyManager {
       if (hotkey === "GLOBE") {
         if (process.platform !== "darwin") {
           debugLogger.log("[HotkeyManager] GLOBE key rejected - not on macOS");
+          this.currentHotkey = null;
           return {
             success: false,
             error: "The Globe key is only available on macOS.",
@@ -124,6 +135,7 @@ class HotkeyManager {
         debugLogger.log(`[HotkeyManager] Hotkey "${hotkey}" registered successfully`);
         return { success: true, hotkey };
       } else {
+        this.currentHotkey = null;
         const failureInfo = this.getFailureReason(hotkey);
         console.error(`[HotkeyManager] Failed to register hotkey: ${hotkey}`, failureInfo);
         debugLogger.log(`[HotkeyManager] Registration failed:`, failureInfo);
@@ -141,6 +153,7 @@ class HotkeyManager {
         };
       }
     } catch (error) {
+      this.currentHotkey = null;
       console.error("[HotkeyManager] Error setting up shortcuts:", error);
       debugLogger.log(`[HotkeyManager] Exception during registration:`, error.message);
       return { success: false, error: error.message };

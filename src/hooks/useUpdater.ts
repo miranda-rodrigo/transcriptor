@@ -10,6 +10,8 @@ interface UpdateStatus {
   updateAvailable: boolean;
   updateDownloaded: boolean;
   isDevelopment: boolean;
+  appWritable?: boolean;
+  installBlockedReason?: string | null;
 }
 
 interface UpdateInfo {
@@ -41,6 +43,8 @@ let globalState: UpdateState = {
     updateAvailable: false,
     updateDownloaded: false,
     isDevelopment: false,
+    appWritable: true,
+    installBlockedReason: null,
   },
   info: null,
   downloadProgress: 0,

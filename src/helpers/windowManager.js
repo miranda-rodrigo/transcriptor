@@ -296,6 +296,34 @@ class WindowManager {
     this.controlPanelWindow.loadURL(appUrl);
   }
 
+  async maybeShowDictationPanelAfterOnboarding() {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return;
+    }
+
+    try {
+      const shouldShow = await this.mainWindow.webContents.executeJavaScript(`
+        (() => {
+          try {
+            const completed = localStorage.getItem("onboardingCompleted") === "true";
+            const rawStep = parseInt(localStorage.getItem("onboardingCurrentStep") || "0", 10);
+            const step = Number.isFinite(rawStep) ? Math.max(0, Math.min(rawStep, 5)) : 0;
+            return completed || step >= 4;
+          } catch {
+            return false;
+          }
+        })()
+      `);
+      if (shouldShow) {
+        this.showDictationPanel();
+      }
+    } catch (error) {
+      console.log(
+        "[WindowManager] Keeping dictation panel hidden until onboarding state is known"
+      );
+    }
+  }
+
   showDictationPanel(options = {}) {
     const { focus = false } = options;
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
@@ -353,13 +381,7 @@ class WindowManager {
 
     this.mainWindow.once("ready-to-show", () => {
       this.enforceMainWindowOnTop();
-      if (!this.mainWindow.isVisible()) {
-        if (typeof this.mainWindow.showInactive === "function") {
-          this.mainWindow.showInactive();
-        } else {
-          this.mainWindow.show();
-        }
-      }
+      this.maybeShowDictationPanelAfterOnboarding();
     });
 
     this.mainWindow.on("show", () => {

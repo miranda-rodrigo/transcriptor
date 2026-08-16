@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Apple Events entitlement and usage string so notarized builds can paste via System Events
+- Native microphone (`askForMediaAccess`) and Accessibility (`isTrustedAccessibilityClient`) prompts
+- Example MDM PPPC profile and IT notes in `docs/enterprise/`
+- Clear in-app message when auto-update cannot write a managed `/Applications` install
+- DMG now includes an Applications shortcut; the app refuses to run from the disk image / Gatekeeper translocation path
+
+### Changed
+- **macOS-only product**: shipping artifact is the signed DMG (zip kept for auto-update). Windows/Linux packaging, CI jobs, and paste backends were removed.
+
+### Fixed
+- Onboarding could skip the macOS Accessibility step while paste-tools info was still loading
+- Default hotkey reported success without actually registering with the OS
+- Failed hotkey changes left a stale “already registered” state that blocked retries
+- Model download errors were treated as successful completions
+- Dictation overlay could flash during early onboarding
+- FFmpeg `chmod` inside a root-owned `.app` bundle (copy to userData instead)
+
 ## [1.2.12] - 2026-01-20
 
 ### Added

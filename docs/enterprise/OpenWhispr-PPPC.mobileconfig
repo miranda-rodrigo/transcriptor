@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadDisplayName</key>
+			<string>OpenWhispr Privacy Permissions</string>
+			<key>PayloadIdentifier</key>
+			<string>com.herotools.openwispr.pppc</string>
+			<key>PayloadType</key>
+			<string>com.apple.TCC.configuration-profile-policy</string>
+			<key>PayloadUUID</key>
+			<string>A7C3E1B2-4D5F-4A8C-9E21-6B0F8D3C1A47</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>Services</key>
+			<dict>
+				<key>Accessibility</key>
+				<array>
+					<dict>
+						<key>Allowed</key>
+						<true/>
+						<key>Authorization</key>
+						<string>Allow</string>
+						<key>CodeRequirement</key>
+						<string>anchor apple generic and identifier "com.herotools.openwispr" and (certificate leaf[field.1.2.840.113635.100.6.1.9] /* exists */ or certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = "9R85XFMH59")</string>
+						<key>Comment</key>
+						<string>Paste transcribed text into the frontmost app</string>
+						<key>Identifier</key>
+						<string>com.herotools.openwispr</string>
+						<key>IdentifierType</key>
+						<string>bundleID</string>
+						<key>StaticCode</key>
+						<false/>
+					</dict>
+				</array>
+				<key>AppleEvents</key>
+				<array>
+					<dict>
+						<key>AEReceiverCodeRequirement</key>
+						<string>identifier "com.apple.systemevents" and anchor apple</string>
+						<key>AEReceiverIdentifier</key>
+						<string>com.apple.systemevents</string>
+						<key>AEReceiverIdentifierType</key>
+						<string>bundleID</string>
+						<key>Allowed</key>
+						<true/>
+						<key>Authorization</key>
+						<string>Allow</string>
+						<key>CodeRequirement</key>
+						<string>anchor apple generic and identifier "com.herotools.openwispr" and (certificate leaf[field.1.2.840.113635.100.6.1.9] /* exists */ or certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = "9R85XFMH59")</string>
+						<key>Comment</key>
+						<string>Send keystrokes to System Events for Cmd+V paste</string>
+						<key>Identifier</key>
+						<string>com.herotools.openwispr</string>
+						<key>IdentifierType</key>
+						<string>bundleID</string>
+						<key>StaticCode</key>
+						<false/>
+					</dict>
+				</array>
+				<key>ListenEvent</key>
+				<array/>
+				<key>Microphone</key>
+				<array>
+					<dict>
+						<key>Allowed</key>
+						<true/>
+						<key>Authorization</key>
+						<string>Allow</string>
+						<key>CodeRequirement</key>
+						<string>anchor apple generic and identifier "com.herotools.openwispr" and (certificate leaf[field.1.2.840.113635.100.6.1.9] /* exists */ or certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = "9R85XFMH59")</string>
+						<key>Comment</key>
+						<string>Record dictation audio</string>
+						<key>Identifier</key>
+						<string>com.herotools.openwispr</string>
+						<key>IdentifierType</key>
+						<string>bundleID</string>
+						<key>StaticCode</key>
+						<false/>
+					</dict>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>Grants OpenWhispr Accessibility, Apple Events (System Events), and Microphone access on managed Macs. Bundle ID is com.herotools.openwispr (historical spelling).</string>
+	<key>PayloadDisplayName</key>
+	<string>OpenWhispr — Privacy Permissions</string>
+	<key>PayloadIdentifier</key>
+	<string>com.herotools.openwispr.pppc.profile</string>
+	<key>PayloadOrganization</key>
+	<string>HeroTools Inc.</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>C2F8A094-1E6B-4D37-9C55-8A1D0E4B7F12</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

@@ -221,6 +221,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openSoundInputSettings: () => ipcRenderer.invoke("open-sound-input-settings"),
   openAccessibilitySettings: () => ipcRenderer.invoke("open-accessibility-settings"),
   openWhisperModelsFolder: () => ipcRenderer.invoke("open-whisper-models-folder"),
+  getMediaAccessStatus: (mediaType) =>
+    ipcRenderer.invoke("get-media-access-status", mediaType),
+  requestMediaAccess: (mediaType) =>
+    ipcRenderer.invoke("request-media-access", mediaType),
+  checkAccessibilityTrusted: (prompt) =>
+    ipcRenderer.invoke("check-accessibility-trusted", prompt),
 
   // Training data logger
   appendTrainingData: (rawText, refinedText, source) =>

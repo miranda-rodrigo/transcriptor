@@ -78,12 +78,16 @@ export function useModelDownload({
           downloadedBytes: data.downloaded_bytes || 0,
           totalBytes: data.total_bytes || 0,
         });
-      } else if (data.type === "complete" || data.type === "error") {
+      } else if (data.type === "complete") {
         // Skip if cancellation is handling cleanup
         if (isCancellingRef.current) return;
         setDownloadingModel(null);
         setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
         onDownloadCompleteRef.current?.();
+      } else if (data.type === "error") {
+        if (isCancellingRef.current) return;
+        setDownloadingModel(null);
+        setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
       }
     },
     []
@@ -97,11 +101,15 @@ export function useModelDownload({
           downloadedBytes: data.downloaded_bytes || 0,
           totalBytes: data.total_bytes || 0,
         });
-      } else if (data.type === "complete" || data.type === "error") {
+      } else if (data.type === "complete") {
         if (isCancellingRef.current) return;
         setDownloadingModel(null);
         setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
         onDownloadCompleteRef.current?.();
+      } else if (data.type === "error") {
+        if (isCancellingRef.current) return;
+        setDownloadingModel(null);
+        setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
       }
     },
     []

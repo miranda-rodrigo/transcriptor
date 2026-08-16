@@ -22,7 +22,6 @@ import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
 import PermissionCard from "./ui/PermissionCard";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
-import PasteToolsInfo from "./ui/PasteToolsInfo";
 import StepProgress from "./ui/StepProgress";
 import { AlertDialog, ConfirmDialog } from "./ui/dialog";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -754,17 +753,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         );
 
       case 3: // Permissions
-        const platform = permissionsHook.pasteToolsInfo?.platform;
-        const isMacOS = platform === "darwin";
-
         return (
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-foreground mb-2">Grant Permissions</h2>
               <p className="text-muted-foreground">
-                {isMacOS
-                  ? "OpenWhispr needs a couple of permissions to work properly"
-                  : "OpenWhispr needs microphone access to record your voice"}
+                OpenWhispr needs a couple of permissions to work properly
               </p>
             </div>
 
@@ -786,28 +780,15 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 />
               )}
 
-              {isMacOS && (
-                <PermissionCard
-                  icon={Shield}
-                  title="Accessibility Permission"
-                  description="Required to paste text automatically"
-                  granted={permissionsHook.accessibilityPermissionGranted}
-                  onRequest={permissionsHook.testAccessibilityPermission}
-                  buttonText="Test & Grant"
-                  onOpenSettings={permissionsHook.openAccessibilitySettings}
-                />
-              )}
-
-              {/* Only show PasteToolsInfo on Linux when tools are NOT available (to show install instructions) */}
-              {platform === "linux" &&
-                permissionsHook.pasteToolsInfo &&
-                !permissionsHook.pasteToolsInfo.available && (
-                  <PasteToolsInfo
-                    pasteToolsInfo={permissionsHook.pasteToolsInfo}
-                    isChecking={permissionsHook.isCheckingPasteTools}
-                    onCheck={permissionsHook.checkPasteToolsAvailability}
-                  />
-                )}
+              <PermissionCard
+                icon={Shield}
+                title="Accessibility Permission"
+                description="Required to paste text automatically"
+                granted={permissionsHook.accessibilityPermissionGranted}
+                onRequest={permissionsHook.testAccessibilityPermission}
+                buttonText="Test & Grant"
+                onOpenSettings={permissionsHook.openAccessibilitySettings}
+              />
             </div>
 
             <div className="bg-amber-50 p-4 rounded-lg">
@@ -941,16 +922,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           }
           return customReasoningModels.length > 0 && !customModelsLoading && !customModelsError;
         }
-      case 3: {
-        if (!permissionsHook.micPermissionGranted) {
-          return false;
-        }
-        const currentPlatform = permissionsHook.pasteToolsInfo?.platform;
-        if (currentPlatform === "darwin") {
-          return permissionsHook.accessibilityPermissionGranted;
-        }
-        return true;
-      }
+      case 3:
+        return (
+          permissionsHook.micPermissionGranted &&
+          permissionsHook.accessibilityPermissionGranted
+        );
       case 4:
         return hotkey.trim() !== ""; // Hotkey & Test step
       case 5:

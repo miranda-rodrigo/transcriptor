@@ -31,40 +31,10 @@ const stopTracks = (stream?: MediaStream) => {
   }
 };
 
-const getPlatformSettingsPath = (): string => {
-  if (typeof navigator !== "undefined") {
-    const ua = navigator.userAgent.toLowerCase();
-    if (ua.includes("win")) return "Settings → Privacy → Microphone";
-    if (ua.includes("linux")) return "your system sound settings";
-  }
-  return "System Settings → Sound → Input";
-};
+const getPlatformSettingsPath = (): string => "System Settings → Sound → Input";
 
-const getPlatformPrivacyPath = (): string => {
-  if (typeof navigator !== "undefined") {
-    const ua = navigator.userAgent.toLowerCase();
-    if (ua.includes("win")) return "Settings → Privacy → Microphone";
-    if (ua.includes("linux")) return "your system privacy settings";
-  }
-  return "System Settings → Privacy & Security → Microphone";
-};
-
-const getPlatform = (): "darwin" | "win32" | "linux" => {
-  if (typeof window !== "undefined" && window.electronAPI?.getPlatform) {
-    const platform = window.electronAPI.getPlatform();
-    if (platform === "darwin" || platform === "win32" || platform === "linux") {
-      return platform;
-    }
-  }
-  // Fallback to user agent detection
-  if (typeof navigator !== "undefined") {
-    const ua = navigator.userAgent.toLowerCase();
-    if (ua.includes("mac")) return "darwin";
-    if (ua.includes("win")) return "win32";
-    if (ua.includes("linux")) return "linux";
-  }
-  return "darwin"; // Default fallback
-};
+const getPlatformPrivacyPath = (): string =>
+  "System Settings → Privacy & Security → Microphone";
 
 const describeMicError = (error: unknown): string => {
   if (!error || typeof error !== "object") {
@@ -165,6 +135,24 @@ export const usePermissions = (
     setMicPermissionError(null);
 
     try {
+      if (window.electronAPI?.requestMediaAccess) {
+        const result = await window.electronAPI.requestMediaAccess("microphone");
+        if (result && result.granted === false && result.status !== "unknown") {
+          const privacyPath = getPlatformPrivacyPath();
+          const message = `Permission was denied. Open ${privacyPath} and allow OpenWhispr.`;
+          setMicPermissionError(message);
+          if (showAlertDialog) {
+            showAlertDialog({
+              title: "Microphone Permission Required",
+              description: message,
+            });
+          } else {
+            alert(message);
+          }
+          return;
+        }
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stopTracks(stream);
       setMicPermissionGranted(true);
@@ -191,12 +179,6 @@ export const usePermissions = (
         const result = await window.electronAPI.checkPasteTools();
         setPasteToolsInfo(result);
 
-        // On Windows and Linux with tools available, auto-grant accessibility
-        if (result.platform === "win32") {
-          setAccessibilityPermissionGranted(true);
-        } else if (result.platform === "linux" && result.available) {
-          setAccessibilityPermissionGranted(true);
-        }
         return result;
       }
       return null;
@@ -208,96 +190,62 @@ export const usePermissions = (
     }
   }, []);
 
-  // Check paste tools on mount
+  // Check paste tools and native permission status on mount
   useEffect(() => {
     checkPasteToolsAvailability();
+
+    const hydrateNativePermissions = async () => {
+      try {
+        if (window.electronAPI?.getMediaAccessStatus) {
+          const media = await window.electronAPI.getMediaAccessStatus("microphone");
+          if (media?.status === "granted") {
+            setMicPermissionGranted(true);
+          }
+        }
+        if (window.electronAPI?.checkAccessibilityTrusted) {
+          const accessibility = await window.electronAPI.checkAccessibilityTrusted(false);
+          if (accessibility?.trusted) {
+            setAccessibilityPermissionGranted(true);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to hydrate native permissions:", error);
+      }
+    };
+
+    void hydrateNativePermissions();
   }, [checkPasteToolsAvailability]);
 
   const testAccessibilityPermission = useCallback(async () => {
-    const platform = getPlatform();
-
-    // On macOS, actually test the accessibility permission
-    if (platform === "darwin") {
-      try {
-        await window.electronAPI.pasteText("OpenWhispr accessibility test");
+    try {
+      const result = await window.electronAPI?.checkAccessibilityTrusted?.(true);
+      if (result?.trusted) {
         setAccessibilityPermissionGranted(true);
-      } catch (err) {
-        console.error("Accessibility permission test failed:", err);
-        if (showAlertDialog) {
-          showAlertDialog({
-            title: "Accessibility Permissions Needed",
-            description:
-              "Please grant accessibility permissions in System Settings to enable automatic text pasting.",
-          });
-        } else {
-          alert("Accessibility permissions needed! Please grant them in System Settings.");
-        }
+        return;
       }
-      return;
-    }
-
-    // On Windows, PowerShell SendKeys is always available
-    if (platform === "win32") {
-      setAccessibilityPermissionGranted(true);
       if (showAlertDialog) {
         showAlertDialog({
-          title: "Ready to Go!",
+          title: "Accessibility Permissions Needed",
           description:
-            "Windows doesn't require special permissions for automatic pasting. You're all set!",
+            "Please grant accessibility permissions in System Settings to enable automatic text pasting.",
         });
-      }
-      return;
-    }
-
-    // On Linux, check if paste tools are available
-    if (platform === "linux") {
-      const result = await checkPasteToolsAvailability();
-
-      if (result?.available) {
-        setAccessibilityPermissionGranted(true);
-        if (showAlertDialog) {
-          const method = result.method || "xdotool";
-          const methodLabel =
-            result.isWayland && method === "xdotool" ? `${method} (XWayland apps)` : method;
-          showAlertDialog({
-            title: "Ready to Go!",
-            description: `Automatic pasting is available using ${methodLabel}. You're all set!`,
-          });
-        }
       } else {
-        // Don't block, but inform the user
-        const isWayland = result?.isWayland;
-        const xwaylandAvailable = result?.xwaylandAvailable;
-        const recommendedTool = result?.recommendedInstall;
-        const installCmd =
-          recommendedTool === "wtype"
-            ? "sudo dnf install wtype  # Fedora\nsudo apt install wtype  # Debian/Ubuntu"
-            : "sudo apt install xdotool  # Debian/Ubuntu/Mint\nsudo dnf install xdotool  # Fedora";
-
-        if (showAlertDialog) {
-          if (isWayland && !xwaylandAvailable && !recommendedTool) {
-            showAlertDialog({
-              title: "Clipboard Mode on Wayland",
-              description:
-                "Automatic pasting isn't available on this Wayland session. OpenWhispr will copy text to your clipboard and you can paste with Ctrl+V.",
-            });
-          } else {
-            const waylandNote = isWayland
-              ? recommendedTool === "wtype"
-                ? "\n\nNote: For XWayland apps, xdotool also works."
-                : "\n\nNote: Automatic pasting works for XWayland apps only."
-              : "";
-            showAlertDialog({
-              title: "Optional: Install Paste Tool",
-              description: `For automatic pasting, install ${recommendedTool || "xdotool"}:\n\n${installCmd}${waylandNote}\n\nWithout this, you can still use OpenWhispr - text will be copied to your clipboard and you can paste with Ctrl+V.`,
-            });
-          }
-        }
-        // Still allow proceeding - this is optional
-        setAccessibilityPermissionGranted(true);
+        alert("Accessibility permissions needed! Please grant them in System Settings.");
+      }
+      await openAccessibilitySettings();
+    } catch (err) {
+      console.error("Accessibility permission test failed:", err);
+      if (showAlertDialog) {
+        showAlertDialog({
+          title: "Accessibility Permissions Needed",
+          description:
+            "Please grant accessibility permissions in System Settings to enable automatic text pasting.",
+        });
+      } else {
+        alert("Accessibility permissions needed! Please grant them in System Settings.");
       }
     }
-  }, [showAlertDialog, checkPasteToolsAvailability]);
+  }, [showAlertDialog, openAccessibilitySettings]);
 
   return {
     micPermissionGranted,

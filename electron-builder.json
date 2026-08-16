@@ -88,12 +88,10 @@
       "from": "resources/bin/",
       "to": "bin/",
       "filter": [
-        "whisper-cpp-*",
-        "whisper-server-*",
-        "sherpa-onnx-ws-*",
-        "*.dylib",
-        "*.dll",
-        "*.so*"
+        "whisper-cpp-darwin-*",
+        "whisper-server-darwin-*",
+        "sherpa-onnx-ws-darwin-*",
+        "*.dylib"
       ]
     }
   ],
@@ -118,65 +116,9 @@
     "extendInfo": {
       "LSUIElement": true,
       "NSMicrophoneUsageDescription": "OpenWhispr needs microphone access for speech-to-text transcription.",
-      "NSAccessibilityUsageDescription": "OpenWhispr needs accessibility permissions to paste transcribed text into other applications."
+      "NSAccessibilityUsageDescription": "OpenWhispr needs accessibility permissions to paste transcribed text into other applications.",
+      "NSAppleEventsUsageDescription": "OpenWhispr uses Apple Events to paste transcribed text into the app you are using."
     }
-  },
-  "win": {
-    "target": [
-      "nsis",
-      "portable"
-    ],
-    "icon": "src/assets/icon.ico",
-    "extraResources": [
-      {
-        "from": "resources/bin/nircmd.exe",
-        "to": "bin/nircmd.exe"
-      }
-    ]
-  },
-  "linux": {
-    "target": [
-      "AppImage",
-      "deb",
-      "rpm",
-      "tar.gz"
-    ],
-    "icon": "src/assets/icon.png",
-    "category": "Utility",
-    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
-  },
-  "flatpak": {
-    "runtime": "org.freedesktop.Platform",
-    "runtimeVersion": "24.08",
-    "sdk": "org.freedesktop.Sdk",
-    "useWaylandFlags": true,
-    "finishArgs": [
-      "--socket=wayland",
-      "--socket=fallback-x11",
-      "--share=network",
-      "--share=ipc",
-      "--device=dri",
-      "--socket=pulseaudio",
-      "--filesystem=home",
-      "--filesystem=xdg-documents",
-      "--filesystem=xdg-download",
-      "--talk-name=org.freedesktop.Notifications",
-      "--talk-name=org.freedesktop.portal.Desktop"
-    ]
-  },
-  "deb": {
-    "afterRemove": "resources/linux/after-remove.sh",
-    "fpm": ["--deb-recommends", "xdotool", "--deb-recommends", "wtype"]
-  },
-  "rpm": {
-    "fpm": ["--rpm-tag", "Recommends: xdotool", "--rpm-tag", "Recommends: wtype"]
-  },
-  "nsis": {
-    "oneClick": false,
-    "allowToChangeInstallationDirectory": true,
-    "createDesktopShortcut": true,
-    "createStartMenuShortcut": true,
-    "include": "resources/nsis/cleanup-models.nsh"
   },
   "dmg": {
     "title": "OpenWhispr",
@@ -184,7 +126,11 @@
     "window": {
       "width": 540,
       "height": 380
-    }
+    },
+    "contents": [
+      { "x": 140, "y": 200, "type": "file" },
+      { "x": 400, "y": 200, "type": "link", "path": "/Applications" }
+    ]
   },
   "publish": {
     "provider": "github",

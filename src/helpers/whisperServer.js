@@ -6,6 +6,7 @@ const path = require("path");
 const http = require("http");
 const debugLogger = require("./debugLogger");
 const { killProcess } = require("../utils/process");
+const { resolveExecutablePath } = require("./bundledBinary");
 
 const PORT_RANGE_START = 8178;
 const PORT_RANGE_END = 8199;
@@ -42,36 +43,16 @@ class WhisperServerManager {
         ? ffmpegPath.replace(/app\.asar([/\\])/, "app.asar.unpacked$1")
         : null;
 
-      if (unpackedPath && fs.existsSync(unpackedPath)) {
-        // Ensure executable permissions on non-Windows
-        if (process.platform !== "win32") {
-          try {
-            fs.accessSync(unpackedPath, fs.constants.X_OK);
-          } catch {
-            try {
-              fs.chmodSync(unpackedPath, 0o755);
-            } catch (chmodErr) {
-              debugLogger.warn("Failed to chmod FFmpeg", { error: chmodErr.message });
-            }
-          }
-        }
-        this.cachedFFmpegPath = unpackedPath;
-        return unpackedPath;
+      const resolvedUnpacked = resolveExecutablePath(unpackedPath);
+      if (resolvedUnpacked) {
+        this.cachedFFmpegPath = resolvedUnpacked;
+        return resolvedUnpacked;
       }
 
-      // Try original path (development or if not in ASAR)
-      if (fs.existsSync(ffmpegPath)) {
-        if (process.platform !== "win32") {
-          try {
-            fs.accessSync(ffmpegPath, fs.constants.X_OK);
-          } catch {
-            // Not executable, fall through to system candidates
-            debugLogger.debug("FFmpeg exists but not executable", { ffmpegPath });
-            throw new Error("Not executable");
-          }
-        }
-        this.cachedFFmpegPath = ffmpegPath;
-        return ffmpegPath;
+      const resolvedBundled = resolveExecutablePath(ffmpegPath);
+      if (resolvedBundled) {
+        this.cachedFFmpegPath = resolvedBundled;
+        return resolvedBundled;
       }
     } catch (err) {
       debugLogger.debug("Bundled FFmpeg not available", { error: err.message });

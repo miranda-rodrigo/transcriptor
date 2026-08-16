@@ -9,6 +9,7 @@ const https = require("https");
 const { runCommand, killProcess, TIMEOUTS } = require("../utils/process");
 const debugLogger = require("./debugLogger");
 const WhisperServerManager = require("./whisperServer");
+const { resolveExecutablePath } = require("./bundledBinary");
 
 // Cache TTL for availability checks
 const CACHE_TTL_MS = 30000;
@@ -1129,38 +1130,23 @@ class WhisperManager {
 
       if (unpackedPath) {
         debugLogger.debug("Checking unpacked ASAR path", { unpackedPath });
-        if (fs.existsSync(unpackedPath)) {
-          if (process.platform !== "win32") {
-            try {
-              fs.accessSync(unpackedPath, fs.constants.X_OK);
-            } catch {
-              debugLogger.debug("FFmpeg not executable, attempting chmod", { unpackedPath });
-              try {
-                fs.chmodSync(unpackedPath, 0o755);
-              } catch (chmodErr) {
-                debugLogger.warn("Failed to chmod FFmpeg", { error: chmodErr.message });
-              }
-            }
-          }
-          debugLogger.debug("Found FFmpeg in unpacked ASAR", { path: unpackedPath });
-          this.cachedFFmpegPath = unpackedPath;
-          return unpackedPath;
-        } else {
-          debugLogger.warn("Unpacked ASAR path does not exist", { unpackedPath });
+        const resolvedUnpacked = resolveExecutablePath(unpackedPath);
+        if (resolvedUnpacked) {
+          debugLogger.debug("Found FFmpeg in unpacked ASAR", { path: resolvedUnpacked });
+          this.cachedFFmpegPath = resolvedUnpacked;
+          return resolvedUnpacked;
         }
+        debugLogger.warn("Unpacked ASAR path does not exist or is not usable", { unpackedPath });
       }
 
       // Try original path (development or if not in ASAR)
-      if (fs.existsSync(ffmpegPath)) {
-        if (process.platform !== "win32") {
-          fs.accessSync(ffmpegPath, fs.constants.X_OK);
-        }
-        debugLogger.debug("Found FFmpeg at bundled path", { path: ffmpegPath });
-        this.cachedFFmpegPath = ffmpegPath;
-        return ffmpegPath;
-      } else {
-        debugLogger.warn("Bundled FFmpeg path does not exist", { ffmpegPath });
+      const resolvedBundled = resolveExecutablePath(ffmpegPath);
+      if (resolvedBundled) {
+        debugLogger.debug("Found FFmpeg at bundled path", { path: resolvedBundled });
+        this.cachedFFmpegPath = resolvedBundled;
+        return resolvedBundled;
       }
+      debugLogger.warn("Bundled FFmpeg path does not exist or is not usable", { ffmpegPath });
     } catch (err) {
       debugLogger.warn("Bundled FFmpeg not available", { error: err.message });
     }
