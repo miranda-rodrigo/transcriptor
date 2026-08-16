@@ -180,6 +180,97 @@ function buildFlowPromptContext({
   return parts.join("\n\n");
 }
 
+const STOP_WORDS = new Set(
+  "a an the and or but to of in on for with at by from as is was are were be this that it um uh like just so if".split(
+    " "
+  )
+);
+
+const REWRITE_PATTERN =
+  /\b(make this|rewrite|rephrase|shorten|summarize|more professional|more casual|more formal|fix this|edit this|translate this|convert this|improve this|bullet(?:\s+point)?s?|turn this)\b/i;
+
+function tokenizeWords(text) {
+  return String(text || "")
+    .replace(/[^\p{L}\p{N}'’-]+/gu, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function levenshtein(left, right) {
+  const a = String(left);
+  const b = String(right);
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+  const rows = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i += 1) rows[i][0] = i;
+  for (let j = 0; j <= b.length; j += 1) rows[0][j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      rows[i][j] = Math.min(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + cost);
+    }
+  }
+  return rows[a.length][b.length];
+}
+
+function isRewriteInstruction(text, agentName = null) {
+  const value = String(text || "").trim();
+  if (!value) return false;
+  if (agentName && value.toLowerCase().includes(String(agentName).toLowerCase())) return true;
+  return REWRITE_PATTERN.test(value);
+}
+
+function buildRewritePrompt(selectedText, instruction) {
+  return `The user highlighted this text:\n"""\n${selectedText}\n"""\n\nSpoken instruction:\n${instruction}\n\nReturn ONLY the replacement text. Do not wrap it in quotes. Keep the original language unless asked to translate.`;
+}
+
+function suggestDictionaryEntries(rawText, finalText, existing = [], limit = 3) {
+  const rawWords = tokenizeWords(rawText);
+  const finalWords = tokenizeWords(finalText);
+  const known = new Set(
+    (existing || []).flatMap((entry) => [
+      String(entry.word || "").toLowerCase(),
+      String(entry.replacement || "").toLowerCase(),
+    ])
+  );
+  const seen = new Set();
+  const suggestions = [];
+
+  for (const finalWord of finalWords) {
+    const finalLower = finalWord.toLowerCase();
+    if (finalWord.length < 3 || STOP_WORDS.has(finalLower) || known.has(finalLower)) continue;
+
+    let best = null;
+    let bestDist = Infinity;
+    for (const rawWord of rawWords) {
+      const rawLower = rawWord.toLowerCase();
+      if (rawLower === finalLower) {
+        best = null;
+        bestDist = 0;
+        break;
+      }
+      if (STOP_WORDS.has(rawLower) || rawWord.length < 3) continue;
+      const dist = levenshtein(rawLower, finalLower);
+      const allowed = Math.max(1, Math.floor(Math.max(rawWord.length, finalWord.length) * 0.4));
+      if (dist > 0 && dist <= allowed && dist < bestDist) {
+        best = rawWord;
+        bestDist = dist;
+      }
+    }
+
+    if (!best || bestDist === 0) continue;
+    const key = best.toLowerCase();
+    if (seen.has(key) || known.has(key)) continue;
+    seen.add(key);
+    suggestions.push({ word: best, replacement: finalWord });
+    if (suggestions.length >= limit) break;
+  }
+
+  return suggestions;
+}
+
 function processDictation(
   text,
   { dictionary = [], snippets = [], localPolish = false, didReason = false } = {}
@@ -207,14 +298,17 @@ module.exports = {
   applyDictionary,
   applyVoiceCommands,
   buildFlowPromptContext,
+  buildRewritePrompt,
   buildVocabularyPrompt,
   categorizeApp,
   collapseRepeatedWords,
   countWords,
   expandSnippets,
   getDestinationTheme,
+  isRewriteInstruction,
   normalizeWhitespace,
   processDictation,
   resolveWritingStyle,
   stripFillers,
+  suggestDictionaryEntries,
 };

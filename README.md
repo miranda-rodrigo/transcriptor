@@ -17,6 +17,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📖 **Personal dictionary**: Names and jargon are fed into Whisper *before* transcription, so it hears “Cheyenne” instead of guessing later
 - 🪄 **Spoken snippets**: Say a cue like “my calendar” and paste a full link, bio, or reply
 - 🎛️ **App-aware tone**: Casual in Slack, formal in Mail, precise in Cursor — the reasoner already cleans speech; tone tells it who you are
+- ✏️ **Rewrite selection**: Highlight text, speak an edit, and OpenWhispr replaces it
+- 📌 **Learn spellings**: After a paste, save a heard→written correction to the dictionary in one click
 - 🤖 **Multi-Provider AI Processing**: Choose between OpenAI, Anthropic Claude, Google Gemini, or local models
 - 🎯 **Agent Naming**: Personalize your AI assistant with a custom name for natural interactions
 - 🧠 **Multi-Provider AI**:

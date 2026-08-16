@@ -3,7 +3,7 @@ const path = require("path");
 // Main dictation window configuration
 const MAIN_WINDOW_CONFIG = {
   width: 380,
-  height: 180,
+  height: 240,
   title: "Voice Recorder",
   webPreferences: {
     preload: path.join(__dirname, "..", "..", "preload.js"),

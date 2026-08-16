@@ -101,6 +101,10 @@ class LocalReasoningService {
     const DEFAULT_REGULAR_PROMPT = `Clean up the following dictated text by fixing grammar, punctuation, and formatting. Output ONLY the cleaned text without any explanations, options, or commentary:\n\n{{text}}`;
 
     const customPrompts = config.customPrompts || null;
+    if (config.overridePrompt) {
+      return config.overridePrompt;
+    }
+
     let agentPrompt = DEFAULT_AGENT_PROMPT;
     let regularPrompt = DEFAULT_REGULAR_PROMPT;
 

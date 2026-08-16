@@ -85,6 +85,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Clipboard functions
   readClipboard: () => ipcRenderer.invoke("read-clipboard"),
+  captureSelectedText: () => ipcRenderer.invoke("capture-selected-text"),
   writeClipboard: (text) => ipcRenderer.invoke("write-clipboard", text),
   checkPasteTools: () => ipcRenderer.invoke("check-paste-tools"),
 

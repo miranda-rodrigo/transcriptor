@@ -11,6 +11,8 @@ const {
   processDictation,
   resolveWritingStyle,
   stripFillers,
+  isRewriteInstruction,
+  suggestDictionaryEntries,
 } = require("./flowEngine");
 
 describe("flowEngine", () => {
@@ -66,5 +68,13 @@ describe("flowEngine", () => {
       buildVocabularyPrompt([{ word: "cheyene", replacement: "Cheyenne" }]),
       "Cheyenne"
     );
+  });
+
+  it("detects rewrite instructions and close spelling corrections", () => {
+    assert.equal(isRewriteInstruction("make this shorter"), true);
+    assert.equal(isRewriteInstruction("hello team"), false);
+    assert.equal(isRewriteInstruction("hey Jarvis, rewrite this", "Jarvis"), true);
+    const suggestions = suggestDictionaryEntries("tell Cheyene hello", "tell Cheyenne hello");
+    assert.deepEqual(suggestions, [{ word: "Cheyene", replacement: "Cheyenne" }]);
   });
 });

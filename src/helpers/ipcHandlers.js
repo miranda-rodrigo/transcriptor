@@ -197,6 +197,10 @@ class IPCHandlers {
       return this.clipboardManager.readClipboard();
     });
 
+    ipcMain.handle("capture-selected-text", async () => {
+      return this.clipboardManager.captureSelectedText();
+    });
+
     ipcMain.handle("write-clipboard", async (event, text) => {
       return this.clipboardManager.writeClipboard(text);
     });

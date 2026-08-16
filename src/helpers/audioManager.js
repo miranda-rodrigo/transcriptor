@@ -8,6 +8,9 @@ const {
   processDictation,
   buildVocabularyPrompt,
   buildFlowPromptContext,
+  buildRewritePrompt,
+  isRewriteInstruction,
+  suggestDictionaryEntries,
 } = flowEngine.default || flowEngine;
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
@@ -41,6 +44,14 @@ class AudioManager {
     this.recordingStartTime = null;
     this.reasoningAvailabilityCache = { value: false, expiresAt: 0 };
     this.cachedReasoningPreference = null;
+    this.pendingSelectedText = null;
+    this.lastSuggestions = [];
+    this.lastRewritten = false;
+    this.lastRawText = "";
+    this.audioContext = null;
+    this.analyser = null;
+    this.levelSource = null;
+    this.levelRaf = null;
   }
 
   setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
@@ -93,6 +104,8 @@ class AudioManager {
         return false;
       }
 
+      this.pendingSelectedText = (await window.electronAPI?.captureSelectedText?.()) || null;
+
       const constraints = await this.getAudioConstraints();
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
@@ -100,6 +113,7 @@ class AudioManager {
       this.audioChunks = [];
       this.recordingStartTime = Date.now();
       this.recordingMimeType = this.mediaRecorder.mimeType || "audio/webm";
+      this.startLevelMonitor(stream);
 
       this.mediaRecorder.ondataavailable = (event) => {
         this.audioChunks.push(event.data);
@@ -108,7 +122,8 @@ class AudioManager {
       this.mediaRecorder.onstop = async () => {
         this.isRecording = false;
         this.isProcessing = true;
-        this.onStateChange?.({ isRecording: false, isProcessing: true });
+        this.stopLevelMonitor();
+        this.onStateChange?.({ isRecording: false, isProcessing: true, levels: [] });
 
         const audioBlob = new Blob(this.audioChunks, { type: this.recordingMimeType });
 
@@ -124,7 +139,7 @@ class AudioManager {
 
       this.mediaRecorder.start();
       this.isRecording = true;
-      this.onStateChange?.({ isRecording: true, isProcessing: false });
+      this.onStateChange?.({ isRecording: true, isProcessing: false, levels: [] });
 
       return true;
     } catch (error) {
@@ -153,6 +168,58 @@ class AudioManager {
     }
   }
 
+  startLevelMonitor(stream) {
+    this.stopLevelMonitor();
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      this.audioContext = new AudioCtx();
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 64;
+      this.analyser.smoothingTimeConstant = 0.62;
+      this.levelSource = this.audioContext.createMediaStreamSource(stream);
+      this.levelSource.connect(this.analyser);
+      const data = new Uint8Array(this.analyser.frequencyBinCount);
+
+      const tick = () => {
+        if (!this.analyser || !this.isRecording) return;
+        this.analyser.getByteFrequencyData(data);
+        const bars = 5;
+        const chunk = Math.max(1, Math.floor(data.length / bars));
+        const levels = [];
+        for (let i = 0; i < bars; i += 1) {
+          let sum = 0;
+          for (let j = 0; j < chunk; j += 1) {
+            sum += data[i * chunk + j] || 0;
+          }
+          levels.push(Math.min(1, sum / (chunk * 170)));
+        }
+        this.onStateChange?.({ isRecording: true, isProcessing: false, levels });
+        this.levelRaf = requestAnimationFrame(tick);
+      };
+
+      this.levelRaf = requestAnimationFrame(tick);
+    } catch (error) {
+      logger.debug("Level monitor unavailable", { error: error.message }, "audio");
+    }
+  }
+
+  stopLevelMonitor() {
+    if (this.levelRaf) {
+      cancelAnimationFrame(this.levelRaf);
+      this.levelRaf = null;
+    }
+    try {
+      this.levelSource?.disconnect();
+    } catch {}
+    try {
+      this.audioContext?.close();
+    } catch {}
+    this.levelSource = null;
+    this.analyser = null;
+    this.audioContext = null;
+  }
+
   stopRecording() {
     if (this.mediaRecorder?.state === "recording") {
       this.mediaRecorder.stop();
@@ -164,12 +231,14 @@ class AudioManager {
 
   cancelRecording() {
     if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
+      this.stopLevelMonitor();
+      this.pendingSelectedText = null;
       this.mediaRecorder.onstop = () => {
         this.isRecording = false;
         this.isProcessing = false;
         this.audioChunks = [];
         this.recordingStartTime = null;
-        this.onStateChange?.({ isRecording: false, isProcessing: false });
+        this.onStateChange?.({ isRecording: false, isProcessing: false, levels: [] });
       };
 
       this.mediaRecorder.stop();
@@ -203,7 +272,7 @@ class AudioManager {
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
       }
 
-      this.onTranscriptionComplete?.(result);
+      this.onTranscriptionComplete?.(this.withFlowMeta(result));
 
       const roundTripDurationMs = Math.round(performance.now() - pipelineStart);
 
@@ -607,10 +676,14 @@ class AudioManager {
     });
 
     const startTime = Date.now();
+    const selectedText = flowAssets.selectedText;
+    const rewriting = Boolean(selectedText && isRewriteInstruction(text, agentName));
     const config = {
       ...(customPrompts ? { customPrompts } : {}),
-      flowContext: buildFlowPromptContext(flowAssets),
+      flowContext: rewriting ? "" : buildFlowPromptContext(flowAssets),
+      ...(rewriting ? { overridePrompt: buildRewritePrompt(selectedText, text) } : {}),
     };
+    this.lastRewritten = rewriting;
 
     try {
       const result = await ReasoningService.processText(text, model, agentName, config);
@@ -715,6 +788,12 @@ class AudioManager {
     });
 
     const flowAssets = await this.getFlowAssets();
+    const selectedText = this.pendingSelectedText;
+    this.pendingSelectedText = null;
+    this.lastRawText = normalizedText;
+    this.lastRewritten = false;
+    this.lastSuggestions = [];
+
     const preparedText = processDictation(normalizedText, {
       dictionary: flowAssets.dictionary,
       snippets: flowAssets.snippets,
@@ -737,11 +816,14 @@ class AudioManager {
       logger.logReasoning("REASONING_SKIPPED", {
         reason: "No reasoning model selected",
       });
-      return processDictation(preparedText, {
-        ...flowAssets,
-        localPolish: flowAssets.localPolish,
-        didReason: false,
-      });
+      return this.finalizeFlowText(
+        processDictation(preparedText, {
+          ...flowAssets,
+          localPolish: flowAssets.localPolish,
+          didReason: false,
+        }),
+        flowAssets
+      );
     }
 
     const useReasoning = await this.isReasoningAvailable();
@@ -753,6 +835,7 @@ class AudioManager {
       agentName,
       style: flowAssets.style,
       activeApp: flowAssets.activeApp,
+      hasSelection: Boolean(selectedText),
     });
 
     if (useReasoning) {
@@ -767,20 +850,24 @@ class AudioManager {
           preparedText,
           reasoningModel,
           agentName,
-          flowAssets
+          { ...flowAssets, selectedText }
         );
 
         logger.logReasoning("REASONING_SUCCESS", {
           resultLength: result.length,
           resultPreview: result.substring(0, 100) + (result.length > 100 ? "..." : ""),
           processingTime: new Date().toISOString(),
+          rewritten: this.lastRewritten,
         });
 
-        return processDictation(result, {
-          ...flowAssets,
-          localPolish: false,
-          didReason: true,
-        });
+        return this.finalizeFlowText(
+          processDictation(result, {
+            ...flowAssets,
+            localPolish: false,
+            didReason: true,
+          }),
+          flowAssets
+        );
       } catch (error) {
         logger.logReasoning("REASONING_FAILED", {
           error: error.message,
@@ -795,11 +882,32 @@ class AudioManager {
       reason: useReasoning ? "Reasoning failed" : "Reasoning not enabled",
     });
 
-    return processDictation(preparedText, {
-      ...flowAssets,
-      localPolish: flowAssets.localPolish,
-      didReason: false,
-    });
+    return this.finalizeFlowText(
+      processDictation(preparedText, {
+        ...flowAssets,
+        localPolish: flowAssets.localPolish,
+        didReason: false,
+      }),
+      flowAssets
+    );
+  }
+
+  finalizeFlowText(finalText, flowAssets = {}) {
+    const text = String(finalText || "");
+    this.lastSuggestions = this.lastRewritten
+      ? []
+      : suggestDictionaryEntries(this.lastRawText, text, flowAssets.dictionary);
+    return text;
+  }
+
+  withFlowMeta(result) {
+    if (!result || !result.success) return result;
+    return {
+      ...result,
+      rawText: this.lastRawText || result.text,
+      suggestions: this.lastSuggestions || [],
+      rewritten: Boolean(this.lastRewritten),
+    };
   }
 
   shouldStreamTranscription(model, provider) {
@@ -1368,6 +1476,7 @@ class AudioManager {
   }
 
   cleanup() {
+    this.stopLevelMonitor();
     if (this.mediaRecorder?.state === "recording") {
       this.stopRecording();
     }

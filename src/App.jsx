@@ -16,18 +16,19 @@ const STYLE_LABELS = {
   code: "code",
 };
 
-function Waveform({ active, accent }) {
+function Waveform({ active, accent, levels = [] }) {
+  const bars = levels.length === 5 ? levels : [0.22, 0.4, 0.55, 0.4, 0.22];
   return (
     <div className="flex h-5 items-end justify-center gap-[3px]">
-      {[0, 1, 2, 3, 4].map((index) => (
+      {bars.map((level, index) => (
         <span
           key={index}
           className="w-[3px] rounded-full"
           style={{
             backgroundColor: accent,
-            height: active ? undefined : 6,
-            animation: active ? `ow-wave 0.9s ease-in-out ${index * 0.08}s infinite` : "none",
-            opacity: active ? 1 : 0.45,
+            height: active ? Math.max(5, Math.round(6 + level * 14)) : 6,
+            opacity: active ? 0.45 + level * 0.55 : 0.45,
+            transition: "height 80ms linear, opacity 80ms linear",
           }}
         />
       ))}
@@ -139,24 +140,63 @@ export default function App() {
     setWindowInteractivity(false);
   }, [setWindowInteractivity]);
 
-  const { isRecording, isProcessing, transcript, toggleListening, cancelRecording } =
-    useAudioRecording(toast, {
-      onToggle: handleDictationToggle,
-    });
+  const {
+    isRecording,
+    isProcessing,
+    transcript,
+    levels,
+    suggestions,
+    rewritten,
+    toggleListening,
+    cancelRecording,
+    dismissSuggestions,
+  } = useAudioRecording(toast, {
+    onToggle: handleDictationToggle,
+  });
 
   const { activeApp, accent, destinationLabel, resolvedStyle } = useDestinationContext({
     isRecording,
     isProcessing,
   });
 
+  const correction = suggestions[0] || null;
+
+  useEffect(() => {
+    if (correction) {
+      setWindowInteractivity(true);
+    }
+  }, [correction, setWindowInteractivity]);
+
   useEffect(() => {
     if (!transcript || isRecording || isProcessing) {
       return undefined;
     }
     setShowResult(true);
-    const timer = setTimeout(() => setShowResult(false), 2800);
+    const timer = setTimeout(() => setShowResult(false), correction ? 8000 : 2800);
     return () => clearTimeout(timer);
-  }, [transcript, isRecording, isProcessing]);
+  }, [transcript, isRecording, isProcessing, correction]);
+
+  const handleLearnSpelling = async (event) => {
+    event.stopPropagation();
+    if (!correction) return;
+    await window.electronAPI.saveDictionaryEntry?.({
+      word: correction.word,
+      replacement: correction.replacement,
+      starred: true,
+    });
+    dismissSuggestions();
+    setShowResult(false);
+    toast({
+      title: "Saved to dictionary",
+      description: `${correction.word} → ${correction.replacement}`,
+      duration: 2500,
+    });
+  };
+
+  const handleDismissCorrection = (event) => {
+    event.stopPropagation();
+    dismissSuggestions();
+  };
 
   const handleClose = () => {
     window.electronAPI.hideWindow();
@@ -187,6 +227,8 @@ export default function App() {
       if (e.key === "Escape") {
         if (isCommandMenuOpen) {
           setIsCommandMenuOpen(false);
+        } else if (correction) {
+          dismissSuggestions();
         } else {
           handleClose();
         }
@@ -197,14 +239,17 @@ export default function App() {
     return () => document.removeEventListener("keydown", handleKeyPress);
   }, [isCommandMenuOpen]);
 
-  const expanded = isHovered || isRecording || isProcessing || isCommandMenuOpen || showResult;
+  const expanded =
+    isHovered || isRecording || isProcessing || isCommandMenuOpen || showResult || Boolean(correction);
   const statusLabel = isRecording
     ? "Listening"
     : isProcessing
       ? "Shaping"
-      : showResult
-        ? "Pasted"
-        : `Hold [${hotkey}]`;
+      : rewritten && showResult
+        ? "Rewrote"
+        : showResult
+          ? "Pasted"
+          : `Hold [${hotkey}]`;
 
   return (
     <div className="fixed bottom-5 right-5 z-50">
@@ -216,7 +261,7 @@ export default function App() {
         }}
         onMouseLeave={() => {
           setIsHovered(false);
-          if (!isCommandMenuOpen) {
+          if (!isCommandMenuOpen && !correction) {
             setWindowInteractivity(false);
           }
         }}
@@ -232,6 +277,31 @@ export default function App() {
           >
             <X size={12} strokeWidth={2.5} />
           </button>
+        )}
+
+        {correction && !isRecording && !isProcessing && (
+          <div className="absolute bottom-full right-0 mb-3 w-[308px] rounded-2xl border border-white/12 bg-black/75 p-3 text-white shadow-2xl backdrop-blur-xl">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">Heard a name</p>
+            <p className="mt-1 truncate text-sm">
+              <span className="text-white/55">{correction.word}</span>
+              <span className="mx-1.5 text-white/35">→</span>
+              <span className="font-medium">{correction.replacement}</span>
+            </p>
+            <div className="mt-2.5 flex gap-2">
+              <button
+                className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black"
+                onClick={handleLearnSpelling}
+              >
+                Save spelling
+              </button>
+              <button
+                className="rounded-full px-3 py-1 text-xs text-white/70 hover:text-white"
+                onClick={handleDismissCorrection}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
         )}
 
         <button
@@ -301,7 +371,7 @@ export default function App() {
               boxShadow: isRecording ? `0 0 0 1px ${accent}88 inset` : "none",
             }}
           >
-            <Waveform active={isRecording || isProcessing} accent={accent} />
+            <Waveform active={isRecording || isProcessing} accent={accent} levels={levels} />
           </div>
 
           <div

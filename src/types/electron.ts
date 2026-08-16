@@ -187,6 +187,7 @@ declare global {
 
       // Clipboard operations
       readClipboard: () => Promise<string>;
+      captureSelectedText?: () => Promise<string | null>;
       writeClipboard: (text: string) => Promise<{ success: boolean }>;
       pasteFromClipboard: () => Promise<{ success: boolean; error?: string }>;
       pasteFromClipboardWithFallback: () => Promise<{ success: boolean; error?: string }>;
