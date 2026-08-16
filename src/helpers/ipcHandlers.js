@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
+const ActiveAppManager = require("./activeApp");
 
 class IPCHandlers {
   constructor(managers) {
@@ -14,6 +15,7 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.modelManager = managers.modelManager;
     this.trayManager = managers.trayManager;
+    this.activeAppManager = new ActiveAppManager();
     this.setupHandlers();
   }
 
@@ -142,6 +144,50 @@ class IPCHandlers {
       return result;
     });
 
+    ipcMain.handle("db-get-dictation-stats", async () => {
+      return this.databaseManager.getDictationStats();
+    });
+
+    ipcMain.handle("db-get-dictionary", async () => {
+      return this.databaseManager.getDictionary();
+    });
+
+    ipcMain.handle("db-save-dictionary-entry", async (event, entry) => {
+      const saved = this.databaseManager.saveDictionaryEntry(entry || {});
+      setImmediate(() => this.broadcastToWindows("dictionary-updated", saved));
+      return { success: true, entry: saved };
+    });
+
+    ipcMain.handle("db-delete-dictionary-entry", async (event, id) => {
+      const result = this.databaseManager.deleteDictionaryEntry(id);
+      if (result?.success) {
+        setImmediate(() => this.broadcastToWindows("dictionary-deleted", { id }));
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-get-snippets", async () => {
+      return this.databaseManager.getSnippets();
+    });
+
+    ipcMain.handle("db-save-snippet", async (event, snippet) => {
+      const saved = this.databaseManager.saveSnippet(snippet || {});
+      setImmediate(() => this.broadcastToWindows("snippet-updated", saved));
+      return { success: true, snippet: saved };
+    });
+
+    ipcMain.handle("db-delete-snippet", async (event, id) => {
+      const result = this.databaseManager.deleteSnippet(id);
+      if (result?.success) {
+        setImmediate(() => this.broadcastToWindows("snippet-deleted", { id }));
+      }
+      return result;
+    });
+
+    ipcMain.handle("get-active-app", async () => {
+      return this.activeAppManager.getActiveApp();
+    });
+
     // Clipboard handlers
     ipcMain.handle("paste-text", async (event, text) => {
       return this.clipboardManager.pasteText(text);
@@ -149,6 +195,10 @@ class IPCHandlers {
 
     ipcMain.handle("read-clipboard", async (event) => {
       return this.clipboardManager.readClipboard();
+    });
+
+    ipcMain.handle("capture-selected-text", async () => {
+      return this.clipboardManager.captureSelectedText();
     });
 
     ipcMain.handle("write-clipboard", async (event, text) => {

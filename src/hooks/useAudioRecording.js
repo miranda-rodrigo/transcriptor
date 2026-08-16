@@ -5,6 +5,9 @@ export const useAudioRecording = (toast, options = {}) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [levels, setLevels] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [rewritten, setRewritten] = useState(false);
   const audioManagerRef = useRef(null);
   const { onToggle } = options;
 
@@ -12,9 +15,15 @@ export const useAudioRecording = (toast, options = {}) => {
     audioManagerRef.current = new AudioManager();
 
     audioManagerRef.current.setCallbacks({
-      onStateChange: ({ isRecording, isProcessing }) => {
+      onStateChange: ({ isRecording, isProcessing, levels: nextLevels }) => {
         setIsRecording(isRecording);
         setIsProcessing(isProcessing);
+        if (Array.isArray(nextLevels)) {
+          setLevels(nextLevels);
+        }
+        if (!isRecording) {
+          setLevels([]);
+        }
       },
       onError: (error) => {
         toast({
@@ -26,6 +35,8 @@ export const useAudioRecording = (toast, options = {}) => {
       onTranscriptionComplete: async (result) => {
         if (result.success) {
           setTranscript(result.text);
+          setSuggestions(result.suggestions || []);
+          setRewritten(Boolean(result.rewritten));
 
           await audioManagerRef.current.safePaste(result.text);
 
@@ -135,13 +146,19 @@ export const useAudioRecording = (toast, options = {}) => {
     }
   };
 
+  const dismissSuggestions = () => setSuggestions([]);
+
   return {
     isRecording,
     isProcessing,
     transcript,
+    levels,
+    suggestions,
+    rewritten,
     startRecording,
     stopRecording,
     cancelRecording,
     toggleListening,
+    dismissSuggestions,
   };
 };

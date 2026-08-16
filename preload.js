@@ -47,6 +47,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
   clearTranscriptions: () => ipcRenderer.invoke("db-clear-transcriptions"),
   deleteTranscription: (id) =>
     ipcRenderer.invoke("db-delete-transcription", id),
+  getDictationStats: () => ipcRenderer.invoke("db-get-dictation-stats"),
+  getDictionary: () => ipcRenderer.invoke("db-get-dictionary"),
+  saveDictionaryEntry: (entry) =>
+    ipcRenderer.invoke("db-save-dictionary-entry", entry),
+  deleteDictionaryEntry: (id) =>
+    ipcRenderer.invoke("db-delete-dictionary-entry", id),
+  getSnippets: () => ipcRenderer.invoke("db-get-snippets"),
+  saveSnippet: (snippet) => ipcRenderer.invoke("db-save-snippet", snippet),
+  deleteSnippet: (id) => ipcRenderer.invoke("db-delete-snippet", id),
+  getActiveApp: () => ipcRenderer.invoke("get-active-app"),
   onTranscriptionAdded: (callback) => {
     const listener = (_event, transcription) => callback?.(transcription);
     ipcRenderer.on("transcription-added", listener);
@@ -75,6 +85,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Clipboard functions
   readClipboard: () => ipcRenderer.invoke("read-clipboard"),
+  captureSelectedText: () => ipcRenderer.invoke("capture-selected-text"),
   writeClipboard: (text) => ipcRenderer.invoke("write-clipboard", text),
   checkPasteTools: () => ipcRenderer.invoke("check-paste-tools"),
 

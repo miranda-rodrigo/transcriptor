@@ -3,6 +3,29 @@ export interface TranscriptionItem {
   text: string;
   timestamp: string;
   created_at: string;
+  word_count?: number;
+}
+
+export interface DictionaryEntry {
+  id: number;
+  word: string;
+  replacement: string;
+  starred?: number | boolean;
+  created_at?: string;
+}
+
+export interface Snippet {
+  id: number;
+  cue: string;
+  expansion: string;
+  created_at?: string;
+}
+
+export interface DictationStats {
+  transcriptionCount: number;
+  totalWords: number;
+  wordsToday: number;
+  streakDays: number;
 }
 
 export interface WhisperCheckResult {
@@ -139,6 +162,16 @@ declare global {
       getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
       clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
       deleteTranscription: (id: number) => Promise<{ success: boolean }>;
+      getDictationStats?: () => Promise<DictationStats>;
+      getDictionary?: () => Promise<DictionaryEntry[]>;
+      saveDictionaryEntry?: (
+        entry: Partial<DictionaryEntry>
+      ) => Promise<{ success: boolean; entry: DictionaryEntry }>;
+      deleteDictionaryEntry?: (id: number) => Promise<{ success: boolean; id: number }>;
+      getSnippets?: () => Promise<Snippet[]>;
+      saveSnippet?: (snippet: Partial<Snippet>) => Promise<{ success: boolean; snippet: Snippet }>;
+      deleteSnippet?: (id: number) => Promise<{ success: boolean; id: number }>;
+      getActiveApp?: () => Promise<string | null>;
       onTranscriptionAdded?: (callback: (item: TranscriptionItem) => void) => (() => void) | void;
       onTranscriptionDeleted?: (callback: (payload: { id: number }) => void) => (() => void) | void;
       onTranscriptionsCleared?: (
@@ -154,6 +187,7 @@ declare global {
 
       // Clipboard operations
       readClipboard: () => Promise<string>;
+      captureSelectedText?: () => Promise<string | null>;
       writeClipboard: (text: string) => Promise<{ success: boolean }>;
       pasteFromClipboard: () => Promise<{ success: boolean; error?: string }>;
       pasteFromClipboardWithFallback: () => Promise<{ success: boolean; error?: string }>;

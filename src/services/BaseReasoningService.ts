@@ -8,6 +8,8 @@ export interface ReasoningConfig {
   temperature?: number;
   contextSize?: number;
   customPrompts?: CustomPrompts;
+  flowContext?: string;
+  overridePrompt?: string;
 }
 
 export abstract class BaseReasoningService {
@@ -23,6 +25,10 @@ export abstract class BaseReasoningService {
   ): string {
     const DEFAULT_AGENT_PROMPT = `You are {{agentName}}, a helpful AI assistant. Clean up the following dictated text by fixing grammar, punctuation, and formatting. Remove any reference to your name. Output ONLY the cleaned text without explanations or options:\n\n{{text}}`;
     const DEFAULT_REGULAR_PROMPT = `Clean up the following dictated text by fixing grammar, punctuation, and formatting. Output ONLY the cleaned text without any explanations, options, or commentary:\n\n{{text}}`;
+
+    if (config.overridePrompt) {
+      return config.overridePrompt;
+    }
 
     let agentPrompt = DEFAULT_AGENT_PROMPT;
     let regularPrompt = DEFAULT_REGULAR_PROMPT;
@@ -45,14 +51,18 @@ export abstract class BaseReasoningService {
       }
     }
 
-    // Simple prompt construction
+    // Regular prompt - replace placeholders
+    let prompt = regularPrompt.replace(/\{\{text\}\}/g, text);
+
     if (agentName && text.toLowerCase().includes(agentName.toLowerCase())) {
-      // Agent-based prompt - replace placeholders
-      return agentPrompt.replace(/\{\{agentName\}\}/g, agentName).replace(/\{\{text\}\}/g, text);
+      prompt = agentPrompt.replace(/\{\{agentName\}\}/g, agentName).replace(/\{\{text\}\}/g, text);
     }
 
-    // Regular prompt - replace placeholders
-    return regularPrompt.replace(/\{\{text\}\}/g, text);
+    if (config.flowContext) {
+      prompt = `${prompt}\n\nPersonalization context:\n${config.flowContext}`;
+    }
+
+    return prompt;
   }
 
   /**
