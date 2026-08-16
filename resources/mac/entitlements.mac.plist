@@ -13,5 +13,9 @@
     <!-- Audio input for microphone recording -->
     <key>com.apple.security.device.audio-input</key>
     <true/>
+
+    <!-- Required to send Apple Events to System Events (Cmd+V paste) under Hardened Runtime -->
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
 </dict>
 </plist>

@@ -83,6 +83,32 @@
 4. Clear model cache: `rm -rf ~/.cache/openwhispr/whisper-models`
 5. Try cloud transcription as fallback
 
+### First launch from the DMG
+
+**Symptoms:** Permissions never stick, paste fails after “install”, updates fail.
+
+**Cause:** The app was opened from the mounted disk image (`/Volumes/OpenWhispr`) instead of from Applications. macOS then binds TCC to a temporary path.
+
+**Fix:** Drag `OpenWhispr.app` to `/Applications` (or `~/Applications` without admin), eject the DMG, and launch from there. The packaged app now warns and quits if you open it from the installer volume.
+
+### Accessibility / paste fails on macOS
+
+**Symptoms:** Dictation copies to the clipboard but never pastes. Onboarding may skip or fail the Accessibility step.
+
+**Fix:**
+1. System Settings → Privacy & Security → Accessibility — enable OpenWhispr
+2. System Settings → Privacy & Security → Automation — allow OpenWhispr to control System Events
+3. If you rebuilt or reinstalled the app, remove leftover OpenWhispr/Electron entries first, then add the new app
+4. On a managed Mac, a standard user often cannot grant these. Ask IT to deploy the PPPC profile in `docs/enterprise/`
+
+### Auto-update fails on a managed Mac
+
+**Symptoms:** “Install & Restart” errors, or updates download but never apply.
+
+**Cause:** `/Applications/OpenWhispr.app` is owned by root/MDM. The in-app updater cannot replace it.
+
+**Fix:** Ship updates through MDM, allow write access to the app bundle, or install a personal copy in `~/Applications`. See `docs/enterprise/README.md`.
+
 ### Windows-Specific Issues
 
 See [WINDOWS_TROUBLESHOOTING.md](WINDOWS_TROUBLESHOOTING.md) for:

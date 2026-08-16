@@ -40,6 +40,7 @@ const TrayManager = require("./src/helpers/tray");
 const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
+const { warnIfRunningFromInstaller } = require("./src/helpers/installLocation");
 
 // Set up PATH for production builds to find system tools (whisper.cpp, ffmpeg)
 function setupProductionPath() {
@@ -122,6 +123,14 @@ async function startApp() {
   // In development, add a small delay to let Vite start properly
   if (process.env.NODE_ENV === "development") {
     await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+
+  // Packaged DMG: refuse to run from /Volumes or a Gatekeeper translocation path.
+  // TCC grants would stick to a throwaway location and break after a real install.
+  const shouldQuitForInstall = await warnIfRunningFromInstaller();
+  if (shouldQuitForInstall) {
+    app.quit();
+    return;
   }
 
   // On macOS, hide from dock (menu bar only app)

@@ -476,6 +476,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   Keep OpenWhispr up to date with the latest features and improvements.
                 </p>
               </div>
+              {!updateStatus.isDevelopment && updateStatus.appWritable === false && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  {updateStatus.installBlockedReason ||
+                    "OpenWhispr is installed in a location your account cannot modify. Ask IT to update the app, or install a copy in your home folder."}
+                </div>
+              )}
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -541,7 +547,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   )}
                 </Button>
 
-                {isUpdateAvailable && !updateStatus.updateDownloaded && (
+                {isUpdateAvailable && !updateStatus.updateDownloaded && updateStatus.appWritable !== false && (
                   <div className="space-y-2">
                     <Button
                       onClick={async () => {
@@ -588,7 +594,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   </div>
                 )}
 
-                {updateStatus.updateDownloaded && (
+                {updateStatus.updateDownloaded && updateStatus.appWritable !== false && (
                   <Button
                     onClick={() => {
                       showConfirmDialog({

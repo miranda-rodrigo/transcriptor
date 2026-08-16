@@ -52,9 +52,19 @@ type ReasoningModelOption = {
   icon?: string;
 };
 
+const getOnboardingPlatform = (): string => {
+  const platform = window.electronAPI?.getPlatform?.();
+  if (platform === "darwin" || platform === "win32" || platform === "linux") {
+    return platform;
+  }
+  return "darwin";
+};
+
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   // Max valid step index for the current onboarding flow (6 steps, index 0-5)
   const MAX_STEP = 5;
+  const platform = getOnboardingPlatform();
+  const isMacOS = platform === "darwin";
 
   const [currentStep, setCurrentStep, removeCurrentStep] = useLocalStorage(
     "onboardingCurrentStep",
@@ -754,9 +764,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         );
 
       case 3: // Permissions
-        const platform = permissionsHook.pasteToolsInfo?.platform;
-        const isMacOS = platform === "darwin";
-
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -945,8 +952,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         if (!permissionsHook.micPermissionGranted) {
           return false;
         }
-        const currentPlatform = permissionsHook.pasteToolsInfo?.platform;
-        if (currentPlatform === "darwin") {
+        if (isMacOS) {
           return permissionsHook.accessibilityPermissionGranted;
         }
         return true;

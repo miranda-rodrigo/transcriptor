@@ -31,10 +31,12 @@ export default function LocalWhisperPicker({
   variant = "settings",
 }: LocalWhisperPickerProps) {
   const [models, setModels] = useState<WhisperModel[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const hasLoadedRef = useRef(false);
   const downloadingModelRef = useRef<string | null>(null);
   const selectedModelRef = useRef(selectedModel);
   const onModelSelectRef = useRef(onModelSelect);
+  const onModelDownloadedRef = useRef(onModelDownloaded);
 
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
   const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
@@ -46,6 +48,9 @@ export default function LocalWhisperPicker({
   useEffect(() => {
     onModelSelectRef.current = onModelSelect;
   }, [onModelSelect]);
+  useEffect(() => {
+    onModelDownloadedRef.current = onModelDownloaded;
+  }, [onModelDownloaded]);
 
   const validateAndSelectModel = useCallback((loadedModels: WhisperModel[]) => {
     const current = selectedModelRef.current;
@@ -66,11 +71,16 @@ export default function LocalWhisperPicker({
       const result = await window.electronAPI?.listWhisperModels();
       if (result?.success) {
         setModels(result.models);
+        setLoadError(null);
         validateAndSelectModel(result.models);
+      } else {
+        setModels([]);
+        setLoadError(result?.error || "Could not load the model list. Check your network and try again.");
       }
     } catch (error) {
       console.error("[LocalWhisperPicker] Failed to load models:", error);
       setModels([]);
+      setLoadError("Could not load the model list. Check your network and try again.");
     }
   }, [validateAndSelectModel]);
 
@@ -92,9 +102,10 @@ export default function LocalWhisperPicker({
   } = useModelDownload({
     modelType: "whisper",
     onDownloadComplete: () => {
+      const completedId = downloadingModelRef.current;
       loadModels();
-      if (downloadingModelRef.current && onModelDownloaded) {
-        onModelDownloaded(downloadingModelRef.current);
+      if (completedId) {
+        onModelDownloadedRef.current?.(completedId);
       }
     },
     onModelsCleared: loadModels,
@@ -143,6 +154,23 @@ export default function LocalWhisperPicker({
 
       <div className="p-4">
         <h5 className={`${styles.header} mb-3`}>Whisper Models</h5>
+
+        {loadError && models.length === 0 && (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p>{loadError}</p>
+            <Button
+              onClick={() => {
+                hasLoadedRef.current = false;
+                void loadModels();
+              }}
+              size="sm"
+              variant="outline"
+              className="mt-2"
+            >
+              Retry
+            </Button>
+          </div>
+        )}
 
         <div className="space-y-2">
           {models.map((model) => {
@@ -223,7 +251,12 @@ export default function LocalWhisperPicker({
                       </Button>
                     ) : (
                       <Button
-                        onClick={() => downloadModel(modelId, onModelSelect)}
+                        onClick={() =>
+                          downloadModel(modelId, (id) => {
+                            onModelSelect(id);
+                            onModelDownloadedRef.current?.(id);
+                          })
+                        }
                         size="sm"
                         className={styles.buttons.download}
                       >

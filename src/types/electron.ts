@@ -64,6 +64,18 @@ export interface UpdateStatusResult {
   updateAvailable: boolean;
   updateDownloaded: boolean;
   isDevelopment: boolean;
+  appWritable?: boolean;
+  installBlockedReason?: string | null;
+}
+
+export interface MediaAccessResult {
+  granted?: boolean;
+  status: "not-determined" | "granted" | "denied" | "restricted" | "unknown" | string;
+}
+
+export interface AccessibilityTrustedResult {
+  trusted: boolean;
+  supported: boolean;
 }
 
 export interface UpdateInfoResult {
@@ -386,6 +398,9 @@ declare global {
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
       openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
       openWhisperModelsFolder?: () => Promise<{ success: boolean; error?: string }>;
+      getMediaAccessStatus?: (mediaType?: "microphone" | "camera") => Promise<MediaAccessResult>;
+      requestMediaAccess?: (mediaType?: "microphone" | "camera") => Promise<MediaAccessResult>;
+      checkAccessibilityTrusted?: (prompt?: boolean) => Promise<AccessibilityTrustedResult>;
     };
 
     api?: {

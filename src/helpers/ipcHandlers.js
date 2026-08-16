@@ -1,4 +1,4 @@
-const { ipcMain, app, shell, BrowserWindow, dialog } = require("electron");
+const { ipcMain, app, shell, BrowserWindow, dialog, systemPreferences } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const AppUtils = require("../utils");
@@ -767,6 +767,41 @@ class IPCHandlers {
     ipcMain.handle("open-microphone-settings", () => openSystemSettings("microphone"));
     ipcMain.handle("open-sound-input-settings", () => openSystemSettings("sound"));
     ipcMain.handle("open-accessibility-settings", () => openSystemSettings("accessibility"));
+
+    ipcMain.handle("get-media-access-status", async (_event, mediaType = "microphone") => {
+      const type = mediaType === "camera" ? "camera" : "microphone";
+      if (typeof systemPreferences.getMediaAccessStatus === "function") {
+        return { status: systemPreferences.getMediaAccessStatus(type) };
+      }
+      return { status: "unknown" };
+    });
+
+    ipcMain.handle("request-media-access", async (_event, mediaType = "microphone") => {
+      const type = mediaType === "camera" ? "camera" : "microphone";
+      if (process.platform === "darwin" && typeof systemPreferences.askForMediaAccess === "function") {
+        const granted = await systemPreferences.askForMediaAccess(type);
+        const status =
+          typeof systemPreferences.getMediaAccessStatus === "function"
+            ? systemPreferences.getMediaAccessStatus(type)
+            : granted
+              ? "granted"
+              : "denied";
+        return { granted, status };
+      }
+      if (typeof systemPreferences.getMediaAccessStatus === "function") {
+        const status = systemPreferences.getMediaAccessStatus(type);
+        return { granted: status === "granted", status };
+      }
+      return { granted: true, status: "unknown" };
+    });
+
+    ipcMain.handle("check-accessibility-trusted", async (_event, prompt = false) => {
+      if (process.platform !== "darwin") {
+        return { trusted: true, supported: false };
+      }
+      const trusted = this.clipboardManager.isAccessibilityTrusted(Boolean(prompt));
+      return { trusted, supported: true };
+    });
 
     // Process status and control
     ipcMain.handle("get-process-status", async () => {

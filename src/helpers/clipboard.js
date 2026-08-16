@@ -1,4 +1,4 @@
-const { clipboard, app } = require("electron");
+const { clipboard, app, systemPreferences } = require("electron");
 const { spawn, spawnSync } = require("child_process");
 const { killProcess } = require("../utils/process");
 const path = require("path");
@@ -590,6 +590,18 @@ class ClipboardManager {
     throw err;
   }
 
+  isAccessibilityTrusted(prompt = false) {
+    if (process.platform !== "darwin") return true;
+    if (typeof systemPreferences.isTrustedAccessibilityClient !== "function") {
+      return false;
+    }
+    try {
+      return systemPreferences.isTrustedAccessibilityClient(Boolean(prompt));
+    } catch {
+      return false;
+    }
+  }
+
   async checkAccessibilityPermissions() {
     if (process.platform !== "darwin") return true;
 
@@ -598,45 +610,15 @@ class ClipboardManager {
       return this.accessibilityCache.value;
     }
 
-    return new Promise((resolve) => {
-      // Check accessibility permissions
-
-      const testProcess = spawn("osascript", [
-        "-e",
-        'tell application "System Events" to get name of first process',
-      ]);
-
-      let testOutput = "";
-      let testError = "";
-
-      testProcess.stdout.on("data", (data) => {
-        testOutput += data.toString();
-      });
-
-      testProcess.stderr.on("data", (data) => {
-        testError += data.toString();
-      });
-
-      testProcess.on("close", (code) => {
-        const allowed = code === 0;
-        this.accessibilityCache = {
-          value: allowed,
-          expiresAt: Date.now() + CACHE_TTL_MS,
-        };
-        if (!allowed) {
-          this.showAccessibilityDialog(testError);
-        }
-        resolve(allowed);
-      });
-
-      testProcess.on("error", (error) => {
-        this.accessibilityCache = {
-          value: false,
-          expiresAt: Date.now() + CACHE_TTL_MS,
-        };
-        resolve(false);
-      });
-    });
+    const allowed = this.isAccessibilityTrusted(false);
+    this.accessibilityCache = {
+      value: allowed,
+      expiresAt: Date.now() + CACHE_TTL_MS,
+    };
+    if (!allowed) {
+      this.showAccessibilityDialog("");
+    }
+    return allowed;
   }
 
   showAccessibilityDialog(testError) {

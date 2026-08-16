@@ -165,6 +165,24 @@ export const usePermissions = (
     setMicPermissionError(null);
 
     try {
+      if (window.electronAPI?.requestMediaAccess) {
+        const result = await window.electronAPI.requestMediaAccess("microphone");
+        if (result && result.granted === false && result.status !== "unknown") {
+          const privacyPath = getPlatformPrivacyPath();
+          const message = `Permission was denied. Open ${privacyPath} and allow OpenWhispr.`;
+          setMicPermissionError(message);
+          if (showAlertDialog) {
+            showAlertDialog({
+              title: "Microphone Permission Required",
+              description: message,
+            });
+          } else {
+            alert(message);
+          }
+          return;
+        }
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stopTracks(stream);
       setMicPermissionGranted(true);
@@ -208,19 +226,53 @@ export const usePermissions = (
     }
   }, []);
 
-  // Check paste tools on mount
+  // Check paste tools and native permission status on mount
   useEffect(() => {
     checkPasteToolsAvailability();
+
+    const hydrateNativePermissions = async () => {
+      try {
+        if (window.electronAPI?.getMediaAccessStatus) {
+          const media = await window.electronAPI.getMediaAccessStatus("microphone");
+          if (media?.status === "granted") {
+            setMicPermissionGranted(true);
+          }
+        }
+        if (window.electronAPI?.checkAccessibilityTrusted) {
+          const accessibility = await window.electronAPI.checkAccessibilityTrusted(false);
+          if (accessibility?.trusted) {
+            setAccessibilityPermissionGranted(true);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to hydrate native permissions:", error);
+      }
+    };
+
+    void hydrateNativePermissions();
   }, [checkPasteToolsAvailability]);
 
   const testAccessibilityPermission = useCallback(async () => {
     const platform = getPlatform();
 
-    // On macOS, actually test the accessibility permission
+    // On macOS, use the native TCC API instead of pasting test text into the focused app
     if (platform === "darwin") {
       try {
-        await window.electronAPI.pasteText("OpenWhispr accessibility test");
-        setAccessibilityPermissionGranted(true);
+        const result = await window.electronAPI?.checkAccessibilityTrusted?.(true);
+        if (result?.trusted) {
+          setAccessibilityPermissionGranted(true);
+          return;
+        }
+        if (showAlertDialog) {
+          showAlertDialog({
+            title: "Accessibility Permissions Needed",
+            description:
+              "Please grant accessibility permissions in System Settings to enable automatic text pasting.",
+          });
+        } else {
+          alert("Accessibility permissions needed! Please grant them in System Settings.");
+        }
+        await openAccessibilitySettings();
       } catch (err) {
         console.error("Accessibility permission test failed:", err);
         if (showAlertDialog) {
@@ -297,7 +349,7 @@ export const usePermissions = (
         setAccessibilityPermissionGranted(true);
       }
     }
-  }, [showAlertDialog, checkPasteToolsAvailability]);
+  }, [showAlertDialog, checkPasteToolsAvailability, openAccessibilitySettings]);
 
   return {
     micPermissionGranted,

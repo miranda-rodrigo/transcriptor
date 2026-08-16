@@ -1,5 +1,9 @@
 const { autoUpdater } = require("electron-updater");
 const { ipcMain } = require("electron");
+const { isAppInstallWritable } = require("./helpers/installLocation");
+
+const MANAGED_INSTALL_MESSAGE =
+  "This copy of OpenWhispr cannot be updated in place. On a managed Mac, ask IT to deploy the latest DMG. Otherwise install a writable copy in Applications or ~/Applications from the latest DMG.";
 
 class UpdateManager {
   constructor() {
@@ -10,6 +14,7 @@ class UpdateManager {
     this.lastUpdateInfo = null;
     this.isInstalling = false;
     this.isDownloading = false;
+    this.appWritable = isAppInstallWritable();
     this.ipcHandlers = [];
     this.eventListeners = [];
 
@@ -40,10 +45,9 @@ class UpdateManager {
     // Disable auto-download - let user control when to download
     autoUpdater.autoDownload = false;
 
-    // Enable auto-install on quit - if user ignores update and quits normally,
-    // the update will install automatically (best UX)
-    // User can also manually trigger install with "Install & Restart" button
-    autoUpdater.autoInstallOnAppQuit = true;
+    // Enable auto-install on quit only when the .app is writable.
+    // MDM /Applications installs are typically root-owned and fail silently otherwise.
+    autoUpdater.autoInstallOnAppQuit = this.appWritable;
 
     // Enable logging in production for debugging (logs are user-accessible)
     autoUpdater.logger = console;
@@ -185,6 +189,13 @@ class UpdateManager {
               };
             }
 
+            if (!this.appWritable) {
+              return {
+                success: false,
+                message: MANAGED_INSTALL_MESSAGE,
+              };
+            }
+
             if (this.updateDownloaded) {
               return {
                 success: true,
@@ -213,6 +224,13 @@ class UpdateManager {
               return {
                 success: false,
                 message: "Update installation is disabled in development mode",
+              };
+            }
+
+            if (!this.appWritable) {
+              return {
+                success: false,
+                message: MANAGED_INSTALL_MESSAGE,
               };
             }
 
@@ -269,6 +287,8 @@ class UpdateManager {
               updateAvailable: this.updateAvailable,
               updateDownloaded: this.updateDownloaded,
               isDevelopment: process.env.NODE_ENV === "development",
+              appWritable: this.appWritable,
+              installBlockedReason: this.appWritable ? null : MANAGED_INSTALL_MESSAGE,
             };
           } catch (error) {
             console.error("❌ Error getting update status:", error);

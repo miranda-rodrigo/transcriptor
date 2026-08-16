@@ -118,7 +118,8 @@
     "extendInfo": {
       "LSUIElement": true,
       "NSMicrophoneUsageDescription": "OpenWhispr needs microphone access for speech-to-text transcription.",
-      "NSAccessibilityUsageDescription": "OpenWhispr needs accessibility permissions to paste transcribed text into other applications."
+      "NSAccessibilityUsageDescription": "OpenWhispr needs accessibility permissions to paste transcribed text into other applications.",
+      "NSAppleEventsUsageDescription": "OpenWhispr uses Apple Events to paste transcribed text into the app you are using."
     }
   },
   "win": {
@@ -184,7 +185,11 @@
     "window": {
       "width": 540,
       "height": 380
-    }
+    },
+    "contents": [
+      { "x": 140, "y": 200, "type": "file" },
+      { "x": 400, "y": 200, "type": "link", "path": "/Applications" }
+    ]
   },
   "publish": {
     "provider": "github",
