@@ -8,6 +8,7 @@ export interface ReasoningConfig {
   temperature?: number;
   contextSize?: number;
   customPrompts?: CustomPrompts;
+  flowContext?: string;
 }
 
 export abstract class BaseReasoningService {
@@ -45,14 +46,18 @@ export abstract class BaseReasoningService {
       }
     }
 
-    // Simple prompt construction
+    // Regular prompt - replace placeholders
+    let prompt = regularPrompt.replace(/\{\{text\}\}/g, text);
+
     if (agentName && text.toLowerCase().includes(agentName.toLowerCase())) {
-      // Agent-based prompt - replace placeholders
-      return agentPrompt.replace(/\{\{agentName\}\}/g, agentName).replace(/\{\{text\}\}/g, text);
+      prompt = agentPrompt.replace(/\{\{agentName\}\}/g, agentName).replace(/\{\{text\}\}/g, text);
     }
 
-    // Regular prompt - replace placeholders
-    return regularPrompt.replace(/\{\{text\}\}/g, text);
+    if (config.flowContext) {
+      prompt = `${prompt}\n\nPersonalization context:\n${config.flowContext}`;
+    }
+
+    return prompt;
   }
 
   /**

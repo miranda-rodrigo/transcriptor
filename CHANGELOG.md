@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Voice memory: personal dictionary (injected into Whisper as initial prompt) and spoken snippets
+- App-aware writing tone for the reasoner, plus a redesigned glass dictation pill that shows destination + style
+- Dictation stats on history (words, today, streak)
 - Apple Events entitlement and usage string so notarized builds can paste via System Events
 - Native microphone (`askForMediaAccess`) and Accessibility (`isTrustedAccessibilityClient`) prompts
 - Example MDM PPPC profile and IT notes in `docs/enterprise/`

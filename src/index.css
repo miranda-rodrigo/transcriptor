@@ -163,3 +163,13 @@ a:hover {
   text-decoration: underline;
   cursor: pointer;
 }
+
+@keyframes ow-wave {
+  0%,
+  100% {
+    height: 6px;
+  }
+  50% {
+    height: 18px;
+  }
+}

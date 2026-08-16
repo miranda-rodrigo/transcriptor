@@ -402,6 +402,7 @@ class WhisperManager {
 
     const model = options.model || "base";
     const language = options.language || null;
+    const prompt = typeof options.prompt === "string" ? options.prompt.trim() : "";
     const modelPath = this.getModelPath(model);
 
     // Check if model exists
@@ -412,7 +413,7 @@ class WhisperManager {
     // Try server mode first (faster for repeated transcriptions)
     if (this.useServerMode && this.serverManager.isAvailable()) {
       try {
-        return await this.transcribeViaServer(audioBlob, model, language);
+        return await this.transcribeViaServer(audioBlob, model, language, prompt);
       } catch (serverError) {
         debugLogger.warn("Server transcription failed, falling back to CLI", {
           error: serverError.message,
@@ -422,10 +423,10 @@ class WhisperManager {
     }
 
     // Fallback to CLI mode (spawns process per transcription)
-    return this.transcribeViaCLI(audioBlob, model, language, modelPath);
+    return this.transcribeViaCLI(audioBlob, model, language, modelPath, prompt);
   }
 
-  async transcribeViaServer(audioBlob, model, language) {
+  async transcribeViaServer(audioBlob, model, language, prompt = "") {
     debugLogger.info("Transcription mode: SERVER", { model, language: language || "auto" });
     const modelPath = this.getModelPath(model);
 
@@ -462,7 +463,7 @@ class WhisperManager {
     });
 
     const startTime = Date.now();
-    const result = await this.serverManager.transcribe(audioBuffer, { language });
+    const result = await this.serverManager.transcribe(audioBuffer, { language, prompt });
     const elapsed = Date.now() - startTime;
 
     debugLogger.logWhisperPipeline("transcribeViaServer - completed", {
@@ -473,7 +474,7 @@ class WhisperManager {
     return this.parseWhisperResult(result);
   }
 
-  async transcribeViaCLI(audioBlob, _model, language, modelPath) {
+  async transcribeViaCLI(audioBlob, _model, language, modelPath, prompt = "") {
     debugLogger.info("Transcription mode: CLI (fallback)", {
       model: path.basename(modelPath, ".bin").replace("ggml-", ""),
       language: language || "auto",
@@ -493,7 +494,13 @@ class WhisperManager {
     const tempAudioPath = await this.createTempAudioFile(audioBlob);
 
     try {
-      const result = await this.runWhisperProcess(binaryPath, tempAudioPath, modelPath, language);
+      const result = await this.runWhisperProcess(
+        binaryPath,
+        tempAudioPath,
+        modelPath,
+        language,
+        prompt
+      );
       return this.parseWhisperResult(result);
     } catch (error) {
       // Exit code 2 typically means argument error - possibly wrong binary (Python whisper vs whisper.cpp)
@@ -509,7 +516,8 @@ class WhisperManager {
             retryBinaryPath,
             tempAudioPath,
             modelPath,
-            language
+            language,
+            prompt
           );
           return this.parseWhisperResult(result);
         }
@@ -662,7 +670,7 @@ class WhisperManager {
     }
   }
 
-  async runWhisperProcess(binaryPath, audioPath, modelPath, language) {
+  async runWhisperProcess(binaryPath, audioPath, modelPath, language, prompt = "") {
     // whisper.cpp --output-json writes to a file, not stdout
     const outputBasePath = audioPath.replace(/\.[^.]+$/, "");
     const jsonOutputPath = `${outputBasePath}.json`;
@@ -679,6 +687,9 @@ class WhisperManager {
     ];
     if (language && language !== "auto") {
       args.push("-l", language);
+    }
+    if (prompt) {
+      args.push("--prompt", prompt);
     }
 
     debugLogger.logProcessStart(binaryPath, args, {});

@@ -2,6 +2,13 @@ import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
 import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
+import flowEngine from "../utils/flowEngine";
+
+const {
+  processDictation,
+  buildVocabularyPrompt,
+  buildFlowPromptContext,
+} = flowEngine.default || flowEngine;
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -260,6 +267,10 @@ class AudioManager {
       if (language && language !== "auto") {
         options.language = language;
       }
+      const vocabularyPrompt = await this.getVocabularyPrompt();
+      if (vocabularyPrompt) {
+        options.prompt = vocabularyPrompt;
+      }
 
       logger.debug(
         "Local transcription starting",
@@ -333,6 +344,10 @@ class AudioManager {
       const options = { model };
       if (language && language !== "auto") {
         options.language = language;
+      }
+      const vocabularyPrompt = await this.getVocabularyPrompt();
+      if (vocabularyPrompt) {
+        options.prompt = vocabularyPrompt;
       }
 
       logger.debug(
@@ -532,7 +547,54 @@ class AudioManager {
     return null;
   }
 
-  async processWithReasoningModel(text, model, agentName) {
+  parseAppWritingStyles() {
+    if (typeof window === "undefined" || !window.localStorage) return {};
+    try {
+      const raw = localStorage.getItem("appWritingStyles");
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  async getFlowAssets() {
+    const [dictionary, snippets, activeApp] = await Promise.all([
+      window.electronAPI?.getDictionary?.() ?? [],
+      window.electronAPI?.getSnippets?.() ?? [],
+      window.electronAPI?.getActiveApp?.() ?? null,
+    ]);
+
+    const style =
+      typeof window !== "undefined" && window.localStorage
+        ? localStorage.getItem("writingStyle") || "auto"
+        : "auto";
+    const localPolish =
+      typeof window === "undefined" || !window.localStorage
+        ? true
+        : localStorage.getItem("localPolish") !== "false";
+
+    return {
+      dictionary: Array.isArray(dictionary) ? dictionary : [],
+      snippets: Array.isArray(snippets) ? snippets : [],
+      activeApp: activeApp || null,
+      style,
+      localPolish,
+      appStyles: this.parseAppWritingStyles(),
+    };
+  }
+
+  async getVocabularyPrompt() {
+    try {
+      const dictionary = (await window.electronAPI?.getDictionary?.()) || [];
+      return buildVocabularyPrompt(dictionary);
+    } catch {
+      return "";
+    }
+  }
+
+  async processWithReasoningModel(text, model, agentName, flowAssets = {}) {
     const customPrompts = this.getCustomPrompts();
 
     logger.logReasoning("CALLING_REASONING_SERVICE", {
@@ -540,10 +602,15 @@ class AudioManager {
       agentName,
       textLength: text.length,
       hasCustomPrompts: !!customPrompts,
+      style: flowAssets.style,
+      activeApp: flowAssets.activeApp,
     });
 
     const startTime = Date.now();
-    const config = customPrompts ? { customPrompts } : {};
+    const config = {
+      ...(customPrompts ? { customPrompts } : {}),
+      flowContext: buildFlowPromptContext(flowAssets),
+    };
 
     try {
       const result = await ReasoningService.processText(text, model, agentName, config);
@@ -647,6 +714,13 @@ class AudioManager {
       timestamp: new Date().toISOString(),
     });
 
+    const flowAssets = await this.getFlowAssets();
+    const preparedText = processDictation(normalizedText, {
+      dictionary: flowAssets.dictionary,
+      snippets: flowAssets.snippets,
+      localPolish: false,
+    });
+
     const reasoningModel =
       typeof window !== "undefined" && window.localStorage
         ? localStorage.getItem("reasoningModel") || ""
@@ -663,7 +737,11 @@ class AudioManager {
       logger.logReasoning("REASONING_SKIPPED", {
         reason: "No reasoning model selected",
       });
-      return normalizedText;
+      return processDictation(preparedText, {
+        ...flowAssets,
+        localPolish: flowAssets.localPolish,
+        didReason: false,
+      });
     }
 
     const useReasoning = await this.isReasoningAvailable();
@@ -673,20 +751,23 @@ class AudioManager {
       reasoningModel,
       reasoningProvider,
       agentName,
+      style: flowAssets.style,
+      activeApp: flowAssets.activeApp,
     });
 
     if (useReasoning) {
       try {
         logger.logReasoning("SENDING_TO_REASONING", {
-          preparedTextLength: normalizedText.length,
+          preparedTextLength: preparedText.length,
           model: reasoningModel,
           provider: reasoningProvider,
         });
 
         const result = await this.processWithReasoningModel(
-          normalizedText,
+          preparedText,
           reasoningModel,
-          agentName
+          agentName,
+          flowAssets
         );
 
         logger.logReasoning("REASONING_SUCCESS", {
@@ -695,7 +776,11 @@ class AudioManager {
           processingTime: new Date().toISOString(),
         });
 
-        return result;
+        return processDictation(result, {
+          ...flowAssets,
+          localPolish: false,
+          didReason: true,
+        });
       } catch (error) {
         logger.logReasoning("REASONING_FAILED", {
           error: error.message,
@@ -710,7 +795,11 @@ class AudioManager {
       reason: useReasoning ? "Reasoning failed" : "Reasoning not enabled",
     });
 
-    return normalizedText;
+    return processDictation(preparedText, {
+      ...flowAssets,
+      localPolish: flowAssets.localPolish,
+      didReason: false,
+    });
   }
 
   shouldStreamTranscription(model, provider) {
@@ -949,6 +1038,11 @@ class AudioManager {
 
       if (language && language !== "auto") {
         formData.append("language", language);
+      }
+
+      const vocabularyPrompt = await this.getVocabularyPrompt();
+      if (vocabularyPrompt) {
+        formData.append("prompt", vocabularyPrompt);
       }
 
       const shouldStream = this.shouldStreamTranscription(model, provider);
