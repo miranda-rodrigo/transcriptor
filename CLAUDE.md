@@ -21,10 +21,8 @@ npm run format         # Auto-fix with ESLint + Prettier
 # Build for current platform (unsigned, for local testing)
 npm run pack
 
-# Build distributable for specific platforms
+# Build the signed/notarized macOS DMG (plus zip for auto-update)
 npm run build:mac
-npm run build:win
-npm run build:linux
 
 # Download whisper.cpp binary for current platform only
 npm run download:whisper-cpp

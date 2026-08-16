@@ -21,7 +21,6 @@ import { useDialogs } from "../hooks/useDialogs";
 import { useToast } from "./ui/Toast";
 import { useUpdater } from "../hooks/useUpdater";
 import SettingsPage from "./SettingsPage";
-import WindowControls from "./WindowControls";
 import {
   useTranscriptions,
   initializeTranscriptions,
@@ -81,11 +80,6 @@ export default function ControlPanel() {
     hideConfirmDialog,
     hideAlertDialog,
   } = useDialogs();
-
-  const platform =
-    typeof window !== "undefined" && window.electronAPI?.getPlatform
-      ? window.electronAPI.getPlatform()
-      : "darwin";
 
   useEffect(() => {
     loadTranscriptions();
@@ -446,9 +440,6 @@ export default function ControlPanel() {
           >
             {SECTION_TITLES[activeSection]}
           </h1>
-          <div className="flex items-center gap-2" style={{ WebkitAppRegion: "no-drag" }}>
-            {platform !== "darwin" && <WindowControls />}
-          </div>
         </div>
 
         <div className="px-8 py-6 max-w-4xl">{renderContent()}</div>

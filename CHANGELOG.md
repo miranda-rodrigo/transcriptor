@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clear in-app message when auto-update cannot write a managed `/Applications` install
 - DMG now includes an Applications shortcut; the app refuses to run from the disk image / Gatekeeper translocation path
 
+### Changed
+- **macOS-only product**: shipping artifact is the signed DMG (zip kept for auto-update). Windows/Linux packaging, CI jobs, and paste backends were removed.
+
 ### Fixed
 - Onboarding could skip the macOS Accessibility step while paste-tools info was still loading
 - Default hotkey reported success without actually registering with the OS

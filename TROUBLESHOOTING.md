@@ -109,12 +109,6 @@
 
 **Fix:** Ship updates through MDM, allow write access to the app bundle, or install a personal copy in `~/Applications`. See `docs/enterprise/README.md`.
 
-### Windows-Specific Issues
-
-See [WINDOWS_TROUBLESHOOTING.md](WINDOWS_TROUBLESHOOTING.md) for:
-- Window visibility issues
-- FFmpeg permission problems
-
 ## Enable Debug Mode
 
 For detailed diagnostics, see [DEBUG.md](DEBUG.md).

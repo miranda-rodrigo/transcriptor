@@ -156,12 +156,6 @@ async function startApp() {
     debugLogger.debug("Parakeet startup init error (non-fatal)", { error: err.message });
   });
 
-  // Log nircmd status on Windows (for debugging bundled dependencies)
-  if (process.platform === "win32") {
-    const nircmdStatus = clipboardManager.getNircmdStatus();
-    debugLogger.debug("Windows paste tool status", nircmdStatus);
-  }
-
   // Create main window
   try {
     await windowManager.createMainWindow();
