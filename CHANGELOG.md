@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **macOS-only product**: shipping artifact is the signed DMG (zip kept for auto-update). Windows/Linux packaging, CI jobs, and paste backends were removed.
+- Dictation HUD is now a tiny bottom-right bar (idle ~72×28px) instead of a large floating panel
 
 ### Fixed
 - Onboarding could skip the macOS Accessibility step while paste-tools info was still loading
@@ -29,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Model download errors were treated as successful completions
 - Dictation overlay could flash during early onboarding
 - FFmpeg `chmod` inside a root-owned `.app` bundle (copy to userData instead)
+- Dictation overlay rendered as a large opaque white window because the Electron bounds were 380×240 and the loading splash used an opaque background
+- Auto-updater kept announcing “no new version on GitHub” when no production release / `latest-mac.yml` exists
 
 ## [1.2.12] - 2026-01-20
 

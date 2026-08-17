@@ -8,26 +8,18 @@ import { useAudioRecording } from "./hooks/useAudioRecording";
 import { useDestinationContext } from "./hooks/useDestinationContext";
 import { isBuiltInMicrophone } from "./utils/audioDeviceUtils";
 
-const STYLE_LABELS = {
-  auto: "auto",
-  formal: "formal",
-  casual: "casual",
-  "very-casual": "casual+",
-  code: "code",
-};
-
 function Waveform({ active, accent, levels = [] }) {
-  const bars = levels.length === 5 ? levels : [0.22, 0.4, 0.55, 0.4, 0.22];
+  const bars = levels.length === 5 ? levels : [0.18, 0.32, 0.5, 0.32, 0.18];
   return (
-    <div className="flex h-5 items-end justify-center gap-[3px]">
+    <div className="flex h-3.5 items-end justify-center gap-[2px]">
       {bars.map((level, index) => (
         <span
           key={index}
-          className="w-[3px] rounded-full"
+          className="w-[2px] rounded-full"
           style={{
             backgroundColor: accent,
-            height: active ? Math.max(5, Math.round(6 + level * 14)) : 6,
-            opacity: active ? 0.45 + level * 0.55 : 0.45,
+            height: active ? Math.max(3, Math.round(4 + level * 10)) : 4,
+            opacity: active ? 0.5 + level * 0.5 : 0.4,
             transition: "height 80ms linear, opacity 80ms linear",
           }}
         />
@@ -154,7 +146,7 @@ export default function App() {
     onToggle: handleDictationToggle,
   });
 
-  const { activeApp, accent, destinationLabel, resolvedStyle } = useDestinationContext({
+  const { accent } = useDestinationContext({
     isRecording,
     isProcessing,
   });
@@ -172,9 +164,14 @@ export default function App() {
       return undefined;
     }
     setShowResult(true);
-    const timer = setTimeout(() => setShowResult(false), correction ? 8000 : 2800);
+    const timer = setTimeout(() => setShowResult(false), correction ? 8000 : 2200);
     return () => clearTimeout(timer);
   }, [transcript, isRecording, isProcessing, correction]);
+
+  const needsPopover = isCommandMenuOpen || Boolean(correction);
+  useEffect(() => {
+    window.electronAPI?.setOverlayLayout?.(needsPopover ? "popover" : "bar");
+  }, [needsPopover]);
 
   const handleLearnSpelling = async (event) => {
     event.stopPropagation();
@@ -186,11 +183,6 @@ export default function App() {
     });
     dismissSuggestions();
     setShowResult(false);
-    toast({
-      title: "Saved to dictionary",
-      description: `${correction.word} → ${correction.replacement}`,
-      duration: 2500,
-    });
   };
 
   const handleDismissCorrection = (event) => {
@@ -237,10 +229,9 @@ export default function App() {
 
     document.addEventListener("keydown", handleKeyPress);
     return () => document.removeEventListener("keydown", handleKeyPress);
-  }, [isCommandMenuOpen]);
+  }, [isCommandMenuOpen, correction, dismissSuggestions]);
 
-  const expanded =
-    isHovered || isRecording || isProcessing || isCommandMenuOpen || showResult || Boolean(correction);
+  const active = isHovered || isRecording || isProcessing || isCommandMenuOpen || showResult;
   const statusLabel = isRecording
     ? "Listening"
     : isProcessing
@@ -249,10 +240,12 @@ export default function App() {
         ? "Rewrote"
         : showResult
           ? "Pasted"
-          : `Hold [${hotkey}]`;
+          : hotkey
+            ? hotkey
+            : "Ready";
 
   return (
-    <div className="fixed bottom-5 right-5 z-50">
+    <div className="relative flex h-screen w-screen items-end justify-end p-1">
       <div
         className="relative flex items-end justify-end"
         onMouseEnter={() => {
@@ -266,36 +259,22 @@ export default function App() {
           }
         }}
       >
-        {isRecording && (
-          <button
-            aria-label="Cancel recording"
-            onClick={(e) => {
-              e.stopPropagation();
-              cancelRecording();
-            }}
-            className="absolute -left-9 bottom-2 flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-black/50 text-white/80 backdrop-blur-md transition hover:border-red-400 hover:bg-red-500 hover:text-white"
-          >
-            <X size={12} strokeWidth={2.5} />
-          </button>
-        )}
-
         {correction && !isRecording && !isProcessing && (
-          <div className="absolute bottom-full right-0 mb-3 w-[308px] rounded-2xl border border-white/12 bg-black/75 p-3 text-white shadow-2xl backdrop-blur-xl">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">Heard a name</p>
-            <p className="mt-1 truncate text-sm">
-              <span className="text-white/55">{correction.word}</span>
-              <span className="mx-1.5 text-white/35">→</span>
+          <div className="absolute bottom-9 right-0 mb-1 w-[248px] rounded-xl border border-white/12 bg-black/80 p-2.5 text-white shadow-xl backdrop-blur-xl">
+            <p className="truncate text-[11px]">
+              <span className="text-white/50">{correction.word}</span>
+              <span className="mx-1 text-white/30">→</span>
               <span className="font-medium">{correction.replacement}</span>
             </p>
-            <div className="mt-2.5 flex gap-2">
+            <div className="mt-2 flex gap-1.5">
               <button
-                className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black"
+                className="rounded-full bg-white px-2.5 py-0.5 text-[10px] font-medium text-black"
                 onClick={handleLearnSpelling}
               >
-                Save spelling
+                Save
               </button>
               <button
-                className="rounded-full px-3 py-1 text-xs text-white/70 hover:text-white"
+                className="rounded-full px-2.5 py-0.5 text-[10px] text-white/60 hover:text-white"
                 onClick={handleDismissCorrection}
               >
                 Dismiss
@@ -304,127 +283,117 @@ export default function App() {
           </div>
         )}
 
-        <button
-          ref={buttonRef}
-          aria-label={statusLabel}
-          onMouseDown={(e) => {
-            setIsCommandMenuOpen(false);
-            setDragStartPos({ x: e.clientX, y: e.clientY });
-            setHasDragged(false);
-            handleMouseDown(e);
-          }}
-          onMouseMove={(e) => {
-            if (dragStartPos && !hasDragged) {
-              const distance = Math.sqrt(
-                Math.pow(e.clientX - dragStartPos.x, 2) + Math.pow(e.clientY - dragStartPos.y, 2)
-              );
-              if (distance > 5) {
-                setHasDragged(true);
-              }
-            }
-          }}
-          onMouseUp={(e) => {
-            handleMouseUp(e);
-            setDragStartPos(null);
-          }}
-          onClick={(e) => {
-            if (!hasDragged && !isProcessing) {
-              setIsCommandMenuOpen(false);
-              toggleListening();
-            }
-            e.preventDefault();
-          }}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            if (!hasDragged) {
-              setWindowInteractivity(true);
-              setIsCommandMenuOpen((prev) => !prev);
-            }
-          }}
-          className="group relative flex items-center overflow-hidden rounded-full border border-white/15 text-left shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
-          style={{
-            width: expanded ? 308 : 52,
-            height: 52,
-            paddingLeft: expanded ? 14 : 0,
-            paddingRight: expanded ? 8 : 0,
-            justifyContent: expanded ? "flex-start" : "center",
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.12), rgba(8,8,8,0.55) 40%, rgba(0,0,0,0.72))",
-            boxShadow: `0 18px 50px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06), 0 0 28px ${accent}33`,
-            cursor: isProcessing ? "wait" : isDragging ? "grabbing" : "pointer",
-            transition:
-              "width 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease, background 0.2s ease",
-          }}
-        >
-          <div
-            className="pointer-events-none absolute inset-0 rounded-full"
-            style={{
-              background: `radial-gradient(circle at 20% 0%, ${accent}33, transparent 55%)`,
-              opacity: isRecording || isProcessing ? 1 : 0.55,
-            }}
-          />
-
-          <div
-            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-            style={{
-              backgroundColor: `${accent}22`,
-              boxShadow: isRecording ? `0 0 0 1px ${accent}88 inset` : "none",
-            }}
-          >
-            <Waveform active={isRecording || isProcessing} accent={accent} levels={levels} />
-          </div>
-
-          <div
-            className="relative ml-3 min-w-0 flex-1 pr-2"
-            style={{
-              opacity: expanded ? 1 : 0,
-              transform: expanded ? "translateX(0)" : "translateX(8px)",
-              transition: "opacity 0.2s ease, transform 0.2s ease",
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-[13px] font-medium tracking-tight text-white">{statusLabel}</span>
-              <span
-                className="rounded-full px-1.5 py-px text-[10px] uppercase tracking-[0.14em]"
-                style={{ color: accent, backgroundColor: `${accent}22` }}
-              >
-                {STYLE_LABELS[resolvedStyle] || resolvedStyle}
-              </span>
-            </div>
-            <p className="mt-0.5 truncate text-[11px] text-white/55">
-              {showResult && transcript
-                ? transcript
-                : activeApp
-                  ? `into ${destinationLabel}`
-                  : "Any text field"}
-            </p>
-          </div>
-        </button>
-
         {isCommandMenuOpen && (
           <div
             ref={commandMenuRef}
-            className="absolute bottom-full right-0 mb-3 w-52 overflow-hidden rounded-2xl border border-white/10 bg-black/70 text-white shadow-2xl backdrop-blur-xl"
+            className="absolute bottom-9 right-0 mb-1 w-44 overflow-hidden rounded-xl border border-white/10 bg-black/80 text-white shadow-xl backdrop-blur-xl"
           >
             <button
-              className="w-full px-3.5 py-2.5 text-left text-sm font-medium hover:bg-white/8"
+              className="w-full px-3 py-2 text-left text-xs font-medium hover:bg-white/8"
               onClick={() => toggleListening()}
             >
               {isRecording ? "Stop listening" : "Start listening"}
             </button>
             <div className="h-px bg-white/10" />
             <button
-              className="w-full px-3.5 py-2.5 text-left text-sm text-white/70 hover:bg-white/8"
+              className="w-full px-3 py-2 text-left text-xs text-white/70 hover:bg-white/8"
               onClick={() => {
                 setIsCommandMenuOpen(false);
                 setWindowInteractivity(false);
                 handleClose();
               }}
             >
-              Hide this for now
+              Hide
             </button>
           </div>
         )}
+
+        <div className="flex items-center">
+          <button
+            ref={buttonRef}
+            aria-label={statusLabel}
+            onMouseDown={(e) => {
+              setIsCommandMenuOpen(false);
+              setDragStartPos({ x: e.clientX, y: e.clientY });
+              setHasDragged(false);
+              handleMouseDown(e);
+            }}
+            onMouseMove={(e) => {
+              if (dragStartPos && !hasDragged) {
+                const distance = Math.sqrt(
+                  Math.pow(e.clientX - dragStartPos.x, 2) + Math.pow(e.clientY - dragStartPos.y, 2)
+                );
+                if (distance > 5) {
+                  setHasDragged(true);
+                }
+              }
+            }}
+            onMouseUp={(e) => {
+              handleMouseUp(e);
+              setDragStartPos(null);
+            }}
+            onClick={(e) => {
+              if (!hasDragged && !isProcessing) {
+                setIsCommandMenuOpen(false);
+                toggleListening();
+              }
+              e.preventDefault();
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              if (!hasDragged) {
+                setWindowInteractivity(true);
+                setIsCommandMenuOpen((prev) => !prev);
+              }
+            }}
+            className="group relative flex h-7 items-center overflow-hidden rounded-full border border-white/10 text-left backdrop-blur-xl"
+            style={{
+              width: isRecording ? 176 : active ? 152 : 72,
+              paddingLeft: 7,
+              paddingRight: isRecording ? 4 : 8,
+              justifyContent: "flex-start",
+              background: "rgba(8, 8, 8, 0.42)",
+              boxShadow: active
+                ? `0 8px 24px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.05), 0 0 14px ${accent}22`
+                : "0 6px 16px rgba(0,0,0,0.18)",
+              opacity: active ? 0.96 : 0.38,
+              cursor: isProcessing ? "wait" : isDragging ? "grabbing" : "pointer",
+              transition:
+                "width 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease, box-shadow 0.2s ease",
+            }}
+          >
+            <div
+              className="relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+              style={{ backgroundColor: `${accent}22` }}
+            >
+              <Waveform active={isRecording || isProcessing} accent={accent} levels={levels} />
+            </div>
+
+            <span
+              className="relative ml-1.5 min-w-0 truncate text-[10px] font-medium tracking-tight text-white/85"
+              style={{
+                opacity: active ? 1 : 0,
+                maxWidth: active ? 96 : 0,
+                transition: "opacity 0.18s ease, max-width 0.22s ease",
+              }}
+            >
+              {showResult && transcript ? transcript : statusLabel}
+            </span>
+            {isRecording && (
+              <span
+                role="button"
+                aria-label="Cancel recording"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  cancelRecording();
+                }}
+                className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white/55 hover:bg-red-500 hover:text-white"
+              >
+                <X size={9} strokeWidth={2.5} />
+              </span>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

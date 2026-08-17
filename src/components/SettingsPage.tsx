@@ -90,6 +90,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
   const [currentVersion, setCurrentVersion] = useState<string>("");
   const [isRemovingModels, setIsRemovingModels] = useState(false);
+  const [updateCheckMessage, setUpdateCheckMessage] = useState<string>("");
   const cachePathHint = "~/.cache/openwhispr/whisper-models";
 
   // Use centralized updater hook to prevent EventEmitter memory leaks
@@ -104,7 +105,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     downloadUpdate,
     installUpdate: installUpdateAction,
     getAppVersion,
-    error: updateError,
   } = useUpdater();
 
   const isUpdateAvailable =
@@ -149,18 +149,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       clearTimeout(timer);
     };
   }, [whisperHook, getAppVersion]);
-
-  // Show alert dialog on update errors
-  useEffect(() => {
-    if (updateError) {
-      showAlertDialog({
-        title: "Update Error",
-        description:
-          updateError.message ||
-          "The updater encountered a problem. Please try again or download the latest release manually.",
-      });
-    }
-  }, [updateError, showAlertDialog]);
 
   useEffect(() => {
     if (installInitiated) {
@@ -508,24 +496,16 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               <div className="space-y-3">
                 <Button
                   onClick={async () => {
+                    setUpdateCheckMessage("");
                     try {
                       const result = await checkForUpdates();
                       if (result?.updateAvailable) {
-                        showAlertDialog({
-                          title: "Update Available",
-                          description: `Update available: v${result.version || "new version"}`,
-                        });
+                        setUpdateCheckMessage(`Update available: v${result.version || "new version"}`);
                       } else {
-                        showAlertDialog({
-                          title: "No Updates",
-                          description: result?.message || "No updates available",
-                        });
+                        setUpdateCheckMessage("");
                       }
                     } catch (error: any) {
-                      showAlertDialog({
-                        title: "Update Check Failed",
-                        description: `Error checking for updates: ${error.message}`,
-                      });
+                      setUpdateCheckMessage(error?.message || "Could not check for updates.");
                     }
                   }}
                   disabled={checkingForUpdates || updateStatus.isDevelopment}
@@ -543,6 +523,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     </>
                   )}
                 </Button>
+                {updateCheckMessage && (
+                  <p className="text-xs text-muted-foreground">{updateCheckMessage}</p>
+                )}
 
                 {isUpdateAvailable && !updateStatus.updateDownloaded && updateStatus.appWritable !== false && (
                   <div className="space-y-2">

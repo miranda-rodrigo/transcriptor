@@ -3,7 +3,12 @@ const HotkeyManager = require("./hotkeyManager");
 const DragManager = require("./dragManager");
 const MenuManager = require("./menuManager");
 const DevServerManager = require("./devServerManager");
-const { MAIN_WINDOW_CONFIG, CONTROL_PANEL_CONFIG, WindowPositionUtil } = require("./windowConfig");
+const {
+  MAIN_WINDOW_CONFIG,
+  CONTROL_PANEL_CONFIG,
+  OVERLAY_LAYOUTS,
+  WindowPositionUtil,
+} = require("./windowConfig");
 
 class WindowManager {
   constructor() {
@@ -15,6 +20,7 @@ class WindowManager {
     this.isQuitting = false;
     this.isMainWindowInteractive = false;
     this.loadErrorShown = false;
+    this.overlayLayout = "bar";
 
     app.on("before-quit", () => {
       this.isQuitting = true;
@@ -34,6 +40,9 @@ class WindowManager {
       ...MAIN_WINDOW_CONFIG,
       ...position,
     });
+
+    this.mainWindow.setBackgroundColor("#00000000");
+    this.overlayLayout = "bar";
 
     console.log("[WindowManager] Main window created, id:", this.mainWindow.id);
 
@@ -91,6 +100,34 @@ class WindowManager {
       this.mainWindow.setIgnoreMouseEvents(true, { forward: true });
     }
     this.isMainWindowInteractive = shouldCapture;
+  }
+
+  setOverlayLayout(layout = "bar") {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return { success: false };
+    }
+
+    const nextLayout = layout === "popover" ? "popover" : "bar";
+    const size = OVERLAY_LAYOUTS[nextLayout] || OVERLAY_LAYOUTS.bar;
+    const current = this.mainWindow.getBounds();
+    const display = screen.getDisplayMatching(current);
+    const workArea = display.workArea || display.bounds;
+
+    // Grow/shrink from the bottom-right so the bar stays parked in the corner.
+    const x = current.x + current.width - size.width;
+    const y = current.y + current.height - size.height;
+    const clampedX = Math.max(workArea.x, Math.min(x, workArea.x + workArea.width - size.width));
+    const clampedY = Math.max(workArea.y, Math.min(y, workArea.y + workArea.height - size.height));
+
+    this.overlayLayout = nextLayout;
+    this.mainWindow.setBounds({
+      x: clampedX,
+      y: clampedY,
+      width: size.width,
+      height: size.height,
+    });
+
+    return { success: true, layout: nextLayout, ...size };
   }
 
   async loadMainWindow() {

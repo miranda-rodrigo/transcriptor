@@ -350,6 +350,12 @@ declare global {
       startWindowDrag: () => Promise<void>;
       stopWindowDrag: () => Promise<void>;
       setMainWindowInteractivity: (interactive: boolean) => Promise<void>;
+      setOverlayLayout?: (layout: "bar" | "popover") => Promise<{
+        success: boolean;
+        layout?: "bar" | "popover";
+        width?: number;
+        height?: number;
+      }>;
       trayUpdateAudioDevices: (
         devices: Array<{ deviceId: string; label: string; isBuiltIn?: boolean }>
       ) => Promise<{ success: boolean }>;

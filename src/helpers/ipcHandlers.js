@@ -72,6 +72,10 @@ class IPCHandlers {
       return { success: true };
     });
 
+    ipcMain.handle("set-overlay-layout", (event, layout) => {
+      return this.windowManager.setOverlayLayout(layout);
+    });
+
     ipcMain.handle("tray-update-audio-devices", (event, devices) => {
       this.trayManager?.setAudioDevices?.(devices);
       return { success: true };
