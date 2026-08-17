@@ -1,6 +1,10 @@
 const { autoUpdater } = require("electron-updater");
 const { ipcMain } = require("electron");
 const { isAppInstallWritable } = require("./helpers/installLocation");
+const {
+  isSilentUpdateMiss,
+  serializeUpdateError,
+} = require("./helpers/updateErrors");
 
 const MANAGED_INSTALL_MESSAGE =
   "This copy of OpenWhispr cannot be updated in place. On a managed Mac, ask IT to deploy the latest DMG. Otherwise install a writable copy in Applications or ~/Applications from the latest DMG.";
@@ -81,9 +85,17 @@ class UpdateManager {
         this.notifyRenderers("update-not-available", info);
       },
       error: (err) => {
+        if (isSilentUpdateMiss(err)) {
+          this.updateAvailable = false;
+          this.updateDownloaded = false;
+          this.isDownloading = false;
+          this.lastUpdateInfo = null;
+          this.notifyRenderers("update-not-available");
+          return;
+        }
         console.error("❌ Auto-updater error:", err);
         this.isDownloading = false;
-        this.notifyRenderers("update-error", err);
+        this.notifyRenderers("update-error", serializeUpdateError(err));
       },
       "download-progress": (progressObj) => {
         console.log(
@@ -159,13 +171,21 @@ class UpdateManager {
                 releaseNotes: result.updateInfo.releaseNotes,
               };
             } else {
-              console.log("✅ Already on latest version");
               return {
                 updateAvailable: false,
                 message: "You are running the latest version",
               };
             }
           } catch (error) {
+            if (isSilentUpdateMiss(error)) {
+              this.updateAvailable = false;
+              this.updateDownloaded = false;
+              this.lastUpdateInfo = null;
+              return {
+                updateAvailable: false,
+                message: "You are running the latest version",
+              };
+            }
             console.error("❌ Update check error:", error);
             throw error;
           }
@@ -319,13 +339,14 @@ class UpdateManager {
   // Method to check for updates on startup
   checkForUpdatesOnStartup() {
     if (process.env.NODE_ENV !== "development") {
-      // Wait a bit for the app to fully initialize
       setTimeout(() => {
-        console.log("🔄 Checking for updates on startup...");
         autoUpdater.checkForUpdates().catch((err) => {
+          if (isSilentUpdateMiss(err)) {
+            return;
+          }
           console.error("Startup update check failed:", err);
         });
-      }, 3000); // Reduced from 5s to 3s for better UX
+      }, 3000);
     }
   }
 

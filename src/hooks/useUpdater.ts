@@ -141,11 +141,17 @@ function registerEventListeners() {
   // Update error
   if (window.electronAPI.onUpdateError) {
     const dispose = window.electronAPI.onUpdateError((_event, error) => {
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : error?.message || "Update failed";
       updateGlobalState({
         isChecking: false,
         isDownloading: false,
         isInstalling: false,
-        error: error instanceof Error ? error : new Error(String(error)),
+        error: new Error(message),
       });
     });
     if (dispose) cleanupFunctions.push(dispose);
