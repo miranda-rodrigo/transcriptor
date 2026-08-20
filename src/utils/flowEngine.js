@@ -291,7 +291,7 @@ function processDictation(
   return result;
 }
 
-module.exports = {
+export {
   DESTINATION_THEMES,
   FILLER_PATTERN,
   STYLE_INSTRUCTIONS,
