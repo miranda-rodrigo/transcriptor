@@ -356,6 +356,9 @@ declare global {
         width?: number;
         height?: number;
       }>;
+      showPermissionHelp?: (
+        kind: "microphone"
+      ) => Promise<{ success: boolean; granted?: boolean; skipped?: boolean }>;
       trayUpdateAudioDevices: (
         devices: Array<{ deviceId: string; label: string; isBuiltIn?: boolean }>
       ) => Promise<{ success: boolean }>;

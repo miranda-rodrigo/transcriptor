@@ -124,11 +124,18 @@
     "icon": "src/assets/icon.icns",
     "window": {
       "width": 540,
-      "height": 380
+      "height": 420
     },
     "contents": [
-      { "x": 140, "y": 200, "type": "file" },
-      { "x": 400, "y": 200, "type": "link", "path": "/Applications" }
+      { "x": 140, "y": 180, "type": "file" },
+      { "x": 400, "y": 180, "type": "link", "path": "/Applications" },
+      {
+        "x": 270,
+        "y": 330,
+        "type": "file",
+        "path": "scripts/install-openwhispr.command",
+        "name": "Install Helper.command"
+      }
     ]
   },
   "publish": {
@@ -136,6 +143,6 @@
     "owner": "miranda-rodrigo",
     "repo": "transcriptor",
     "private": false,
-    "releaseType": "draft"
+    "releaseType": "release"
   }
 }

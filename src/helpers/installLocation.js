@@ -61,6 +61,77 @@ function isAppInstallWritable() {
   }
 }
 
+function isInApplicationsFolder() {
+  const bundlePath = getMacAppBundlePath();
+  if (!bundlePath) {
+    return true;
+  }
+  const homeApps = path.join(os.homedir(), "Applications") + path.sep;
+  return bundlePath.startsWith("/Applications/") || bundlePath.startsWith(homeApps);
+}
+
+/**
+ * First-boot install: if the packaged app is running from Downloads, Desktop,
+ * etc., offer to move it into /Applications using Electron's native
+ * app.moveToApplicationsFolder(). On success the app relaunches itself from
+ * the new location, so callers must stop startup when this returns true.
+ *
+ * DMG and Gatekeeper-translocated launches are NOT handled here (moving a
+ * translocated/readonly bundle is unreliable); those flow into
+ * warnIfRunningFromInstaller() below.
+ */
+async function offerMoveToApplications() {
+  if (process.platform !== "darwin" || process.env.NODE_ENV === "development") {
+    return false;
+  }
+  try {
+    if (!app.isPackaged) {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+
+  const { shouldRelocate } = getInstallLocationInfo();
+  if (shouldRelocate || isInApplicationsFolder()) {
+    return false;
+  }
+
+  const { response } = await dialog.showMessageBox({
+    type: "question",
+    buttons: ["Move to Applications", "Not Now"],
+    defaultId: 0,
+    cancelId: 1,
+    title: "Install OpenWhispr",
+    message: "Move OpenWhispr to the Applications folder?",
+    detail:
+      "OpenWhispr works best from Applications: microphone and accessibility permissions stay attached to the app and automatic updates keep working.\n\nOpenWhispr will move itself and reopen automatically.",
+  });
+
+  if (response !== 0) {
+    return false;
+  }
+
+  try {
+    const moved = app.moveToApplicationsFolder({
+      conflictHandler: (conflictType) => {
+        // Another copy is already in /Applications and running: don't fight it.
+        return conflictType !== "existsAndRunning";
+      },
+    });
+    return Boolean(moved);
+  } catch (error) {
+    await dialog.showMessageBox({
+      type: "warning",
+      buttons: ["OK"],
+      title: "Could not move OpenWhispr",
+      message: "OpenWhispr could not move itself to Applications.",
+      detail: `${error?.message || "Unknown error"}\n\nQuit OpenWhispr, then drag OpenWhispr.app into Applications (or ~/Applications if you do not have admin rights) and open it from there.`,
+    });
+    return false;
+  }
+}
+
 /**
  * Packaged DMG users must copy the .app off the disk image.
  * Running from /Volumes or a Gatekeeper translocation path binds TCC
@@ -119,5 +190,7 @@ module.exports = {
   getMacAppBundlePath,
   getInstallLocationInfo,
   isAppInstallWritable,
+  isInApplicationsFolder,
+  offerMoveToApplications,
   warnIfRunningFromInstaller,
 };

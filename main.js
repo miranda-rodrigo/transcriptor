@@ -40,7 +40,10 @@ const TrayManager = require("./src/helpers/tray");
 const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
-const { warnIfRunningFromInstaller } = require("./src/helpers/installLocation");
+const {
+  warnIfRunningFromInstaller,
+  offerMoveToApplications,
+} = require("./src/helpers/installLocation");
 
 // Set up PATH for production builds to find system tools (whisper.cpp, ffmpeg)
 function setupProductionPath() {
@@ -123,6 +126,13 @@ async function startApp() {
   // In development, add a small delay to let Vite start properly
   if (process.env.NODE_ENV === "development") {
     await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+
+  // First boot from Downloads/Desktop/etc.: offer to move into /Applications.
+  // On success the app relaunches itself from the new location.
+  const isRelaunchingAfterMove = await offerMoveToApplications();
+  if (isRelaunchingAfterMove) {
+    return;
   }
 
   // Packaged DMG: refuse to run from /Volumes or a Gatekeeper translocation path.
@@ -245,6 +255,9 @@ async function startApp() {
 
 // App event handlers
 if (gotSingleInstanceLock) {
+  // The user double-clicked the app while it was already running (it lives in
+  // the menu bar, so this is easy to do by accident). Make the app visibly
+  // react instead of appearing to do nothing.
   app.on("second-instance", async () => {
     await app.whenReady();
     if (!windowManager) {
@@ -262,6 +275,7 @@ if (gotSingleInstanceLock) {
     }
 
     if (isLiveWindow(windowManager.mainWindow)) {
+      windowManager.showDictationPanel();
       windowManager.enforceMainWindowOnTop();
     } else {
       windowManager.createMainWindow();

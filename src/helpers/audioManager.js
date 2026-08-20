@@ -151,6 +151,9 @@ class AudioManager {
         errorTitle = "Microphone Access Denied";
         errorDescription =
           "Please grant microphone permission in your system settings and try again.";
+        // The dictation overlay cannot render toasts; walk the user to the
+        // system prompt / privacy pane natively instead of failing silently.
+        void window.electronAPI?.showPermissionHelp?.("microphone");
       } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
         errorTitle = "No Microphone Found";
         errorDescription = "No microphone was detected. Please connect a microphone and try again.";
