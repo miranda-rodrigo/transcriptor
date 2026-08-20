@@ -822,6 +822,49 @@ class IPCHandlers {
     ipcMain.handle("open-sound-input-settings", () => openSystemSettings("sound"));
     ipcMain.handle("open-accessibility-settings", () => openSystemSettings("accessibility"));
 
+    // Native permission-help dialog. The dictation overlay is too small to
+    // render toasts, so permission failures there must surface natively.
+    let micHelpDialogShown = false;
+    ipcMain.handle("show-permission-help", async (_event, kind = "microphone") => {
+      if (kind !== "microphone") {
+        return { success: false };
+      }
+      if (micHelpDialogShown) {
+        return { success: true, skipped: true };
+      }
+      micHelpDialogShown = true;
+
+      // Trigger the native macOS prompt first; it registers the app in the
+      // Microphone privacy list even when it was previously denied.
+      if (
+        process.platform === "darwin" &&
+        typeof systemPreferences.askForMediaAccess === "function"
+      ) {
+        try {
+          const granted = await systemPreferences.askForMediaAccess("microphone");
+          if (granted) {
+            micHelpDialogShown = false;
+            return { success: true, granted: true };
+          }
+        } catch {}
+      }
+
+      const { response } = await dialog.showMessageBox({
+        type: "info",
+        buttons: ["Open System Settings", "Later"],
+        defaultId: 0,
+        cancelId: 1,
+        title: "Enable the microphone",
+        message: "OpenWhispr needs microphone access to transcribe your voice",
+        detail:
+          "Enable OpenWhispr in System Settings → Privacy & Security → Microphone, then press your dictation hotkey again.",
+      });
+      if (response === 0) {
+        await openSystemSettings("microphone");
+      }
+      return { success: true, granted: false };
+    });
+
     ipcMain.handle("get-media-access-status", async (_event, mediaType = "microphone") => {
       const type = mediaType === "camera" ? "camera" : "microphone";
       if (typeof systemPreferences.getMediaAccessStatus === "function") {

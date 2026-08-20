@@ -110,7 +110,43 @@ npm run pack
 3. Eject the disk image
 4. Launch from Applications — do not run the app from the mounted DMG
 
+If the app is launched from anywhere else (Downloads, Desktop), it offers to
+**move itself into Applications** automatically on first boot and relaunches
+from there.
+
+If the drag-install fails (app already running, Finder error `-60008`, stale
+permissions from a previous build), double-click **Install Helper.command**
+inside the DMG. It quits any running copy, installs to `/Applications` (or
+`~/Applications` without admin rights), clears the quarantine flag and stale
+permission entries, and opens the app.
+
 The zip next to the DMG is only for in-app auto-update (`electron-updater`).
+
+#### Why signing matters (foolproof installs on other Macs)
+
+Everything above works on the build machine, but for the DMG to be
+"double-click and it works" on **any** Mac you need an
+[Apple Developer Program](https://developer.apple.com/programs/) membership
+(USD 99/year):
+
+- **Gatekeeper**: unsigned apps show scary warnings or refuse to open on
+  default security settings.
+- **Auto-update**: `electron-updater` on macOS refuses to apply updates to
+  unsigned builds.
+- **Permissions**: TCC grants (microphone/accessibility) are tied to the code
+  signature. Ad-hoc signatures change on every build, so users must re-grant
+  permissions after each update; a stable Developer ID signature keeps them.
+
+CI is already wired for this — add the `APPLE_CERTIFICATE_BASE64`,
+`APPLE_CERTIFICATE_PASSWORD`, `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID`,
+`APPLE_API_ISSUER` and `APPLE_TEAM_ID` secrets to the GitHub repo and the
+release workflow signs + notarizes automatically. Without the secrets it
+still produces a working unsigned DMG (right-click → Open to bypass
+Gatekeeper).
+
+On managed Macs (JumpCloud/Jamf/etc.), permissions can be pre-approved by IT
+with the PPPC profile in [`docs/enterprise/`](docs/enterprise/README.md) — the
+only truly zero-prompt install path for locked-down machines.
 
 ### Building for Distribution
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import flowEngine from "../utils/flowEngine";
+import * as flowEngine from "../utils/flowEngine";
 
-const engine = flowEngine.default || flowEngine;
+const engine = flowEngine;
 
 function readStyleSettings() {
   const style = localStorage.getItem("writingStyle") || "auto";

@@ -1,4 +1,4 @@
-const { clipboard, systemPreferences } = require("electron");
+const { clipboard, systemPreferences, dialog } = require("electron");
 const { spawn } = require("child_process");
 const { killProcess } = require("../utils/process");
 
@@ -8,6 +8,7 @@ const PASTE_DELAY_MS = 50;
 class ClipboardManager {
   constructor() {
     this.accessibilityCache = { value: null, expiresAt: 0 };
+    this.accessibilityDialogShown = false;
   }
 
   safeLog(...args) {
@@ -131,66 +132,43 @@ class ClipboardManager {
       value: allowed,
       expiresAt: Date.now() + CACHE_TTL_MS,
     };
-    if (!allowed) {
-      this.showAccessibilityDialog("");
+    if (allowed) {
+      // Permission granted: allow the guidance dialog again if it is ever revoked.
+      this.accessibilityDialogShown = false;
+    } else {
+      void this.showAccessibilityDialog();
     }
     return allowed;
   }
 
-  showAccessibilityDialog(testError) {
-    const isStuckPermission =
-      testError.includes("not allowed assistive access") ||
-      testError.includes("(-1719)") ||
-      testError.includes("(-25006)");
-
-    let dialogMessage;
-    if (isStuckPermission) {
-      dialogMessage = `🔒 OpenWhispr needs Accessibility permissions, but it looks like you may have OLD PERMISSIONS from a previous version.
-
-❗ COMMON ISSUE: If you've rebuilt/reinstalled OpenWhispr, the old permissions may be "stuck" and preventing new ones.
-
-🔧 To fix this:
-1. Open System Settings → Privacy & Security → Accessibility
-2. Look for ANY old "OpenWhispr" entries and REMOVE them (click the - button)
-3. Also remove any entries that say "Electron" or have unclear names
-4. Click the + button and manually add the NEW OpenWhispr app
-5. Make sure the checkbox is enabled
-6. Restart OpenWhispr
-
-⚠️ This is especially common during development when rebuilding the app.
-
-📝 Without this permission, text will only copy to clipboard (no automatic pasting).
-
-Would you like to open System Settings now?`;
-    } else {
-      dialogMessage = `🔒 OpenWhispr needs Accessibility permissions to paste text into other applications.
-
-📋 Current status: Clipboard copy works, but pasting (Cmd+V simulation) fails.
-
-🔧 To fix this:
-1. Open System Settings (or System Preferences on older macOS)
-2. Go to Privacy & Security → Accessibility
-3. Click the lock icon and enter your password
-4. Add OpenWhispr to the list and check the box
-5. Restart OpenWhispr
-
-⚠️ Without this permission, dictated text will only be copied to clipboard but won't paste automatically.
-
-💡 In production builds, this permission is required for full functionality.
-
-Would you like to open System Settings now?`;
+  async showAccessibilityDialog() {
+    if (this.accessibilityDialogShown) {
+      return;
     }
+    this.accessibilityDialogShown = true;
 
-    const permissionDialog = spawn("osascript", [
-      "-e",
-      `display dialog "${dialogMessage}" buttons {"Cancel", "Open System Settings"} default button "Open System Settings"`,
-    ]);
+    // Prompting via the system API registers OpenWhispr in the Accessibility
+    // list, so the user only has to flip the toggle instead of hunting for
+    // the app with the "+" button.
+    this.isAccessibilityTrusted(true);
 
-    permissionDialog.on("close", (dialogCode) => {
-      if (dialogCode === 0) {
+    try {
+      const { response } = await dialog.showMessageBox({
+        type: "info",
+        buttons: ["Open System Settings", "Later"],
+        defaultId: 0,
+        cancelId: 1,
+        title: "Enable automatic pasting",
+        message: "Allow OpenWhispr to paste text for you",
+        detail:
+          "Your dictated text was copied to the clipboard — press Cmd+V to paste it manually this time.\n\nTo paste automatically, enable OpenWhispr in System Settings → Privacy & Security → Accessibility, then dictate again.\n\nIf you reinstalled OpenWhispr, remove any old OpenWhispr/Electron entries from that list first.",
+      });
+      if (response === 0) {
         this.openSystemSettings();
       }
-    });
+    } catch (error) {
+      this.safeLog("Accessibility dialog failed", error.message);
+    }
   }
 
   openSystemSettings() {

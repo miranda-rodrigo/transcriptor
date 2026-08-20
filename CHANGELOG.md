@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Example MDM PPPC profile and IT notes in `docs/enterprise/`
 - Clear in-app message when auto-update cannot write a managed `/Applications` install
 - DMG now includes an Applications shortcut; the app refuses to run from the disk image / Gatekeeper translocation path
+- First boot from Downloads/Desktop offers to move the app into Applications automatically (native `moveToApplicationsFolder`)
+- `Install Helper.command` inside the DMG: fallback installer that quits running copies, installs, clears quarantine and stale permission entries
+- Native "Open System Settings" dialogs when pasting without Accessibility or recording without Microphone permission (no more silent failures)
 
 ### Changed
 - **macOS-only product**: shipping artifact is the signed DMG (zip kept for auto-update). Windows/Linux packaging, CI jobs, and paste backends were removed.
@@ -32,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - FFmpeg `chmod` inside a root-owned `.app` bundle (copy to userData instead)
 - Dictation overlay rendered as a large opaque white window because the Electron bounds were 380×240 and the loading splash used an opaque background
 - Auto-updater kept announcing “no new version on GitHub” when no production release / `latest-mac.yml` exists
+- Double-clicking the app while it was already running did nothing visible (menu-bar app + silent single-instance exit) — now the overlay and Control Panel come forward
+- Release builds were published as GitHub drafts, so the auto-updater never found `latest-mac.yml` (`releaseType` is now `release`)
 
 ## [1.2.12] - 2026-01-20
 
