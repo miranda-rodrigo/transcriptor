@@ -2,7 +2,7 @@ import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
 import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
-import flowEngine from "../utils/flowEngine";
+import * as flowEngine from "../utils/flowEngine";
 
 const {
   processDictation,
@@ -11,7 +11,7 @@ const {
   buildRewritePrompt,
   isRewriteInstruction,
   suggestDictionaryEntries,
-} = flowEngine.default || flowEngine;
+} = flowEngine;
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
