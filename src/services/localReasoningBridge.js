@@ -39,7 +39,7 @@ class LocalReasoningService {
       const customPrompts = config.customPrompts || null;
 
       // Build the reasoning prompt
-      const reasoningPrompt = this.getReasoningPrompt(text, agentName, config);
+      const reasoningPrompt = this.getReasoningPrompt(text, agentName, customPrompts);
 
       debugLogger.logReasoning("LOCAL_BRIDGE_PROMPT", {
         promptLength: reasoningPrompt.length,
@@ -96,14 +96,9 @@ class LocalReasoningService {
     }
   }
 
-  getReasoningPrompt(text, agentName, config = {}) {
+  getReasoningPrompt(text, agentName, customPrompts) {
     const DEFAULT_AGENT_PROMPT = `You are {{agentName}}, a helpful AI assistant. Clean up the following dictated text by fixing grammar, punctuation, and formatting. Remove any reference to your name. Output ONLY the cleaned text without explanations or options:\n\n{{text}}`;
     const DEFAULT_REGULAR_PROMPT = `Clean up the following dictated text by fixing grammar, punctuation, and formatting. Output ONLY the cleaned text without any explanations, options, or commentary:\n\n{{text}}`;
-
-    const customPrompts = config.customPrompts || null;
-    if (config.overridePrompt) {
-      return config.overridePrompt;
-    }
 
     let agentPrompt = DEFAULT_AGENT_PROMPT;
     let regularPrompt = DEFAULT_REGULAR_PROMPT;
@@ -113,16 +108,12 @@ class LocalReasoningService {
       regularPrompt = customPrompts.regular || DEFAULT_REGULAR_PROMPT;
     }
 
-    let prompt =
-      agentName && text.toLowerCase().includes(agentName.toLowerCase())
-        ? agentPrompt.replace(/\{\{agentName\}\}/g, agentName).replace(/\{\{text\}\}/g, text)
-        : regularPrompt.replace(/\{\{text\}\}/g, text);
-
-    if (config.flowContext) {
-      prompt = `${prompt}\n\nPersonalization context:\n${config.flowContext}`;
+    // Check if agent name is mentioned
+    if (agentName && text.toLowerCase().includes(agentName.toLowerCase())) {
+      return agentPrompt.replace(/\{\{agentName\}\}/g, agentName).replace(/\{\{text\}\}/g, text);
     }
 
-    return prompt;
+    return regularPrompt.replace(/\{\{text\}\}/g, text);
   }
 
   calculateMaxTokens(textLength, minTokens = 100, maxTokens = 2048, multiplier = 2) {

@@ -55,58 +55,56 @@ class ClipboardManager {
     }
   }
 
-  async captureSelectedText() {
-    try {
-      if (!this.isAccessibilityTrusted(false)) {
-        return null;
-      }
-
-      const previous = clipboard.readText();
-      await this.keystrokeMacOS("c");
-      await new Promise((resolve) => setTimeout(resolve, 80));
-      const selected = clipboard.readText();
-      clipboard.writeText(previous || "");
-
-      const trimmed = String(selected || "").trim();
-      const previousTrimmed = String(previous || "").trim();
-      if (!trimmed || trimmed === previousTrimmed) {
-        return null;
-      }
-      return trimmed.length > 8000 ? trimmed.slice(0, 8000) : trimmed;
-    } catch (error) {
-      this.safeLog("captureSelectedText failed", error.message);
-      return null;
-    }
-  }
-
-  async keystrokeMacOS(key) {
-    return new Promise((resolve, reject) => {
-      const processRef = spawn("osascript", [
-        "-e",
-        `tell application "System Events" to keystroke "${key}" using command down`,
-      ]);
-
-      const timeoutId = setTimeout(() => {
-        killProcess(processRef, "SIGKILL");
-        reject(new Error("Keyboard simulation timed out"));
-      }, 3000);
-
-      processRef.on("close", (code) => {
-        clearTimeout(timeoutId);
-        if (code === 0) resolve();
-        else reject(new Error(`Keyboard simulation failed (code ${code})`));
-      });
-      processRef.on("error", (error) => {
-        clearTimeout(timeoutId);
-        reject(error);
-      });
-    });
-  }
-
   async pasteMacOS() {
-    await new Promise((resolve) => setTimeout(resolve, PASTE_DELAY_MS));
-    await this.keystrokeMacOS("v");
-    this.safeLog("✅ Text pasted successfully via Cmd+V simulation");
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const pasteProcess = spawn("osascript", [
+          "-e",
+          'tell application "System Events" to keystroke "v" using command down',
+        ]);
+
+        let hasTimedOut = false;
+
+        pasteProcess.on("close", (code) => {
+          if (hasTimedOut) return;
+          clearTimeout(timeoutId);
+          pasteProcess.removeAllListeners();
+
+          if (code === 0) {
+            this.safeLog("✅ Text pasted successfully via Cmd+V simulation");
+            resolve();
+          } else {
+            reject(
+              new Error(
+                `Paste failed (code ${code}). Text is copied to clipboard - please paste manually with Cmd+V.`
+              )
+            );
+          }
+        });
+
+        pasteProcess.on("error", (error) => {
+          if (hasTimedOut) return;
+          clearTimeout(timeoutId);
+          pasteProcess.removeAllListeners();
+          reject(
+            new Error(
+              `Paste command failed: ${error.message}. Text is copied to clipboard - please paste manually with Cmd+V.`
+            )
+          );
+        });
+
+        const timeoutId = setTimeout(() => {
+          hasTimedOut = true;
+          killProcess(pasteProcess, "SIGKILL");
+          pasteProcess.removeAllListeners();
+          reject(
+            new Error(
+              "Paste operation timed out. Text is copied to clipboard - please paste manually with Cmd+V."
+            )
+          );
+        }, 3000);
+      }, PASTE_DELAY_MS);
+    });
   }
 
   isAccessibilityTrusted(prompt = false) {

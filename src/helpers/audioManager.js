@@ -2,16 +2,6 @@ import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
 import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
-import flowEngine from "../utils/flowEngine";
-
-const {
-  processDictation,
-  buildVocabularyPrompt,
-  buildFlowPromptContext,
-  buildRewritePrompt,
-  isRewriteInstruction,
-  suggestDictionaryEntries,
-} = flowEngine.default || flowEngine;
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -44,14 +34,6 @@ class AudioManager {
     this.recordingStartTime = null;
     this.reasoningAvailabilityCache = { value: false, expiresAt: 0 };
     this.cachedReasoningPreference = null;
-    this.pendingSelectedText = null;
-    this.lastSuggestions = [];
-    this.lastRewritten = false;
-    this.lastRawText = "";
-    this.audioContext = null;
-    this.analyser = null;
-    this.levelSource = null;
-    this.levelRaf = null;
   }
 
   setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
@@ -104,8 +86,6 @@ class AudioManager {
         return false;
       }
 
-      this.pendingSelectedText = (await window.electronAPI?.captureSelectedText?.()) || null;
-
       const constraints = await this.getAudioConstraints();
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
@@ -113,7 +93,6 @@ class AudioManager {
       this.audioChunks = [];
       this.recordingStartTime = Date.now();
       this.recordingMimeType = this.mediaRecorder.mimeType || "audio/webm";
-      this.startLevelMonitor(stream);
 
       this.mediaRecorder.ondataavailable = (event) => {
         this.audioChunks.push(event.data);
@@ -122,8 +101,7 @@ class AudioManager {
       this.mediaRecorder.onstop = async () => {
         this.isRecording = false;
         this.isProcessing = true;
-        this.stopLevelMonitor();
-        this.onStateChange?.({ isRecording: false, isProcessing: true, levels: [] });
+        this.onStateChange?.({ isRecording: false, isProcessing: true });
 
         const audioBlob = new Blob(this.audioChunks, { type: this.recordingMimeType });
 
@@ -139,7 +117,7 @@ class AudioManager {
 
       this.mediaRecorder.start();
       this.isRecording = true;
-      this.onStateChange?.({ isRecording: true, isProcessing: false, levels: [] });
+      this.onStateChange?.({ isRecording: true, isProcessing: false });
 
       return true;
     } catch (error) {
@@ -168,58 +146,6 @@ class AudioManager {
     }
   }
 
-  startLevelMonitor(stream) {
-    this.stopLevelMonitor();
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      this.audioContext = new AudioCtx();
-      this.analyser = this.audioContext.createAnalyser();
-      this.analyser.fftSize = 64;
-      this.analyser.smoothingTimeConstant = 0.62;
-      this.levelSource = this.audioContext.createMediaStreamSource(stream);
-      this.levelSource.connect(this.analyser);
-      const data = new Uint8Array(this.analyser.frequencyBinCount);
-
-      const tick = () => {
-        if (!this.analyser || !this.isRecording) return;
-        this.analyser.getByteFrequencyData(data);
-        const bars = 5;
-        const chunk = Math.max(1, Math.floor(data.length / bars));
-        const levels = [];
-        for (let i = 0; i < bars; i += 1) {
-          let sum = 0;
-          for (let j = 0; j < chunk; j += 1) {
-            sum += data[i * chunk + j] || 0;
-          }
-          levels.push(Math.min(1, sum / (chunk * 170)));
-        }
-        this.onStateChange?.({ isRecording: true, isProcessing: false, levels });
-        this.levelRaf = requestAnimationFrame(tick);
-      };
-
-      this.levelRaf = requestAnimationFrame(tick);
-    } catch (error) {
-      logger.debug("Level monitor unavailable", { error: error.message }, "audio");
-    }
-  }
-
-  stopLevelMonitor() {
-    if (this.levelRaf) {
-      cancelAnimationFrame(this.levelRaf);
-      this.levelRaf = null;
-    }
-    try {
-      this.levelSource?.disconnect();
-    } catch {}
-    try {
-      this.audioContext?.close();
-    } catch {}
-    this.levelSource = null;
-    this.analyser = null;
-    this.audioContext = null;
-  }
-
   stopRecording() {
     if (this.mediaRecorder?.state === "recording") {
       this.mediaRecorder.stop();
@@ -231,14 +157,12 @@ class AudioManager {
 
   cancelRecording() {
     if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
-      this.stopLevelMonitor();
-      this.pendingSelectedText = null;
       this.mediaRecorder.onstop = () => {
         this.isRecording = false;
         this.isProcessing = false;
         this.audioChunks = [];
         this.recordingStartTime = null;
-        this.onStateChange?.({ isRecording: false, isProcessing: false, levels: [] });
+        this.onStateChange?.({ isRecording: false, isProcessing: false });
       };
 
       this.mediaRecorder.stop();
@@ -272,7 +196,7 @@ class AudioManager {
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
       }
 
-      this.onTranscriptionComplete?.(this.withFlowMeta(result));
+      this.onTranscriptionComplete?.(result);
 
       const roundTripDurationMs = Math.round(performance.now() - pipelineStart);
 
@@ -335,10 +259,6 @@ class AudioManager {
       const options = { model };
       if (language && language !== "auto") {
         options.language = language;
-      }
-      const vocabularyPrompt = await this.getVocabularyPrompt();
-      if (vocabularyPrompt) {
-        options.prompt = vocabularyPrompt;
       }
 
       logger.debug(
@@ -413,10 +333,6 @@ class AudioManager {
       const options = { model };
       if (language && language !== "auto") {
         options.language = language;
-      }
-      const vocabularyPrompt = await this.getVocabularyPrompt();
-      if (vocabularyPrompt) {
-        options.prompt = vocabularyPrompt;
       }
 
       logger.debug(
@@ -616,54 +532,7 @@ class AudioManager {
     return null;
   }
 
-  parseAppWritingStyles() {
-    if (typeof window === "undefined" || !window.localStorage) return {};
-    try {
-      const raw = localStorage.getItem("appWritingStyles");
-      if (!raw) return {};
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === "object" ? parsed : {};
-    } catch {
-      return {};
-    }
-  }
-
-  async getFlowAssets() {
-    const [dictionary, snippets, activeApp] = await Promise.all([
-      window.electronAPI?.getDictionary?.() ?? [],
-      window.electronAPI?.getSnippets?.() ?? [],
-      window.electronAPI?.getActiveApp?.() ?? null,
-    ]);
-
-    const style =
-      typeof window !== "undefined" && window.localStorage
-        ? localStorage.getItem("writingStyle") || "auto"
-        : "auto";
-    const localPolish =
-      typeof window === "undefined" || !window.localStorage
-        ? true
-        : localStorage.getItem("localPolish") !== "false";
-
-    return {
-      dictionary: Array.isArray(dictionary) ? dictionary : [],
-      snippets: Array.isArray(snippets) ? snippets : [],
-      activeApp: activeApp || null,
-      style,
-      localPolish,
-      appStyles: this.parseAppWritingStyles(),
-    };
-  }
-
-  async getVocabularyPrompt() {
-    try {
-      const dictionary = (await window.electronAPI?.getDictionary?.()) || [];
-      return buildVocabularyPrompt(dictionary);
-    } catch {
-      return "";
-    }
-  }
-
-  async processWithReasoningModel(text, model, agentName, flowAssets = {}) {
+  async processWithReasoningModel(text, model, agentName) {
     const customPrompts = this.getCustomPrompts();
 
     logger.logReasoning("CALLING_REASONING_SERVICE", {
@@ -671,19 +540,10 @@ class AudioManager {
       agentName,
       textLength: text.length,
       hasCustomPrompts: !!customPrompts,
-      style: flowAssets.style,
-      activeApp: flowAssets.activeApp,
     });
 
     const startTime = Date.now();
-    const selectedText = flowAssets.selectedText;
-    const rewriting = Boolean(selectedText && isRewriteInstruction(text, agentName));
-    const config = {
-      ...(customPrompts ? { customPrompts } : {}),
-      flowContext: rewriting ? "" : buildFlowPromptContext(flowAssets),
-      ...(rewriting ? { overridePrompt: buildRewritePrompt(selectedText, text) } : {}),
-    };
-    this.lastRewritten = rewriting;
+    const config = customPrompts ? { customPrompts } : {};
 
     try {
       const result = await ReasoningService.processText(text, model, agentName, config);
@@ -787,19 +647,6 @@ class AudioManager {
       timestamp: new Date().toISOString(),
     });
 
-    const flowAssets = await this.getFlowAssets();
-    const selectedText = this.pendingSelectedText;
-    this.pendingSelectedText = null;
-    this.lastRawText = normalizedText;
-    this.lastRewritten = false;
-    this.lastSuggestions = [];
-
-    const preparedText = processDictation(normalizedText, {
-      dictionary: flowAssets.dictionary,
-      snippets: flowAssets.snippets,
-      localPolish: false,
-    });
-
     const reasoningModel =
       typeof window !== "undefined" && window.localStorage
         ? localStorage.getItem("reasoningModel") || ""
@@ -816,14 +663,7 @@ class AudioManager {
       logger.logReasoning("REASONING_SKIPPED", {
         reason: "No reasoning model selected",
       });
-      return this.finalizeFlowText(
-        processDictation(preparedText, {
-          ...flowAssets,
-          localPolish: flowAssets.localPolish,
-          didReason: false,
-        }),
-        flowAssets
-      );
+      return normalizedText;
     }
 
     const useReasoning = await this.isReasoningAvailable();
@@ -833,41 +673,29 @@ class AudioManager {
       reasoningModel,
       reasoningProvider,
       agentName,
-      style: flowAssets.style,
-      activeApp: flowAssets.activeApp,
-      hasSelection: Boolean(selectedText),
     });
 
     if (useReasoning) {
       try {
         logger.logReasoning("SENDING_TO_REASONING", {
-          preparedTextLength: preparedText.length,
+          preparedTextLength: normalizedText.length,
           model: reasoningModel,
           provider: reasoningProvider,
         });
 
         const result = await this.processWithReasoningModel(
-          preparedText,
+          normalizedText,
           reasoningModel,
-          agentName,
-          { ...flowAssets, selectedText }
+          agentName
         );
 
         logger.logReasoning("REASONING_SUCCESS", {
           resultLength: result.length,
           resultPreview: result.substring(0, 100) + (result.length > 100 ? "..." : ""),
           processingTime: new Date().toISOString(),
-          rewritten: this.lastRewritten,
         });
 
-        return this.finalizeFlowText(
-          processDictation(result, {
-            ...flowAssets,
-            localPolish: false,
-            didReason: true,
-          }),
-          flowAssets
-        );
+        return result;
       } catch (error) {
         logger.logReasoning("REASONING_FAILED", {
           error: error.message,
@@ -882,32 +710,7 @@ class AudioManager {
       reason: useReasoning ? "Reasoning failed" : "Reasoning not enabled",
     });
 
-    return this.finalizeFlowText(
-      processDictation(preparedText, {
-        ...flowAssets,
-        localPolish: flowAssets.localPolish,
-        didReason: false,
-      }),
-      flowAssets
-    );
-  }
-
-  finalizeFlowText(finalText, flowAssets = {}) {
-    const text = String(finalText || "");
-    this.lastSuggestions = this.lastRewritten
-      ? []
-      : suggestDictionaryEntries(this.lastRawText, text, flowAssets.dictionary);
-    return text;
-  }
-
-  withFlowMeta(result) {
-    if (!result || !result.success) return result;
-    return {
-      ...result,
-      rawText: this.lastRawText || result.text,
-      suggestions: this.lastSuggestions || [],
-      rewritten: Boolean(this.lastRewritten),
-    };
+    return normalizedText;
   }
 
   shouldStreamTranscription(model, provider) {
@@ -1146,11 +949,6 @@ class AudioManager {
 
       if (language && language !== "auto") {
         formData.append("language", language);
-      }
-
-      const vocabularyPrompt = await this.getVocabularyPrompt();
-      if (vocabularyPrompt) {
-        formData.append("prompt", vocabularyPrompt);
       }
 
       const shouldStream = this.shouldStreamTranscription(model, provider);
@@ -1476,7 +1274,6 @@ class AudioManager {
   }
 
   cleanup() {
-    this.stopLevelMonitor();
     if (this.mediaRecorder?.state === "recording") {
       this.stopRecording();
     }

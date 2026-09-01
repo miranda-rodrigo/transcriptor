@@ -373,14 +373,6 @@ class WhisperServerManager {
       );
     }
 
-    if (options.prompt) {
-      parts.push(
-        `--${boundary}\r\n` +
-          `Content-Disposition: form-data; name="prompt"\r\n\r\n` +
-          `${options.prompt}\r\n`
-      );
-    }
-
     parts.push(
       `--${boundary}\r\n` +
         `Content-Disposition: form-data; name="response_format"\r\n\r\n` +

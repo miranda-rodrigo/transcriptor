@@ -12,7 +12,7 @@ import {
   RefreshCw,
   Loader2,
   Power,
-  Palette,
+  Copy,
 } from "lucide-react";
 import SupportDropdown from "./ui/SupportDropdown";
 import TranscriptionItem from "./ui/TranscriptionItem";
@@ -21,8 +21,6 @@ import { useDialogs } from "../hooks/useDialogs";
 import { useToast } from "./ui/Toast";
 import { useUpdater } from "../hooks/useUpdater";
 import SettingsPage from "./SettingsPage";
-import PersonalizationPage from "./PersonalizationPage";
-import type { DictationStats } from "../types/electron";
 import {
   useTranscriptions,
   initializeTranscriptions,
@@ -32,7 +30,7 @@ import {
 
 import type { SettingsSectionType } from "./SettingsPage";
 
-type SectionType = SettingsSectionType | "history" | "personalization";
+type SectionType = SettingsSectionType | "history";
 
 interface NavItem {
   id: SectionType;
@@ -44,7 +42,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: "general", label: "General", icon: Settings },
   { id: "transcription", label: "Transcription Mode", icon: Mic },
   { id: "aiModels", label: "AI Models", icon: Brain },
-  { id: "personalization", label: "Voice & Tone", icon: Palette },
   { id: "agentConfig", label: "Agent Configuration", icon: User },
   { id: "prompts", label: "AI Prompts", icon: Sparkles },
   { id: "history", label: "Recent Transcriptions", icon: FileText },
@@ -54,7 +51,6 @@ const SECTION_TITLES: Record<SectionType, string> = {
   general: "General",
   transcription: "Transcription Mode",
   aiModels: "AI Models",
-  personalization: "Voice & Tone",
   agentConfig: "Agent Configuration",
   prompts: "AI Prompts",
   history: "Recent Transcriptions",
@@ -64,7 +60,6 @@ export default function ControlPanel() {
   const history = useTranscriptions();
   const [isLoading, setIsLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<SectionType>("general");
-  const [stats, setStats] = useState<DictationStats | null>(null);
   const { toast } = useToast();
 
   const {
@@ -114,8 +109,6 @@ export default function ControlPanel() {
     try {
       setIsLoading(true);
       await initializeTranscriptions();
-      const nextStats = await window.electronAPI.getDictationStats?.();
-      setStats(nextStats || null);
     } catch {
       showAlertDialog({
         title: "Unable to load history",
@@ -237,24 +230,6 @@ export default function ControlPanel() {
 
   const renderHistorySection = () => (
     <div className="space-y-6">
-      {stats && (
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Words", value: stats.totalWords.toLocaleString() },
-            { label: "Today", value: stats.wordsToday.toLocaleString() },
-            { label: "Streak", value: `${stats.streakDays}d` },
-          ].map((item) => (
-            <div key={item.label} className="rounded-2xl border border-border bg-card px-4 py-3">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                {item.label}
-              </p>
-              <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-                {item.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-foreground">Transcription History</h2>
@@ -310,9 +285,6 @@ export default function ControlPanel() {
   const renderContent = () => {
     if (activeSection === "history") {
       return renderHistorySection();
-    }
-    if (activeSection === "personalization") {
-      return <PersonalizationPage />;
     }
     return <SettingsPage activeSection={activeSection as SettingsSectionType} />;
   };

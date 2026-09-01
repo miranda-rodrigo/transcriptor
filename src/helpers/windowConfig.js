@@ -2,7 +2,7 @@ const path = require("path");
 
 // Main dictation window configuration
 const MAIN_WINDOW_CONFIG = {
-  width: 380,
+  width: 240,
   height: 240,
   title: "Voice Recorder",
   webPreferences: {
