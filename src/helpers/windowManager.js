@@ -15,6 +15,8 @@ class WindowManager {
     this.isQuitting = false;
     this.isMainWindowInteractive = false;
     this.loadErrorShown = false;
+    // Set when the user explicitly hides the panel; dictation must not re-show it.
+    this.dictationPanelHiddenByUser = false;
 
     app.on("before-quit", () => {
       this.isQuitting = true;
@@ -133,9 +135,7 @@ class WindowManager {
       }
       lastToggleTime = now;
 
-      if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
-      }
+      this.showDictationPanelForDictation();
       this.mainWindow.webContents.send("toggle-dictation");
     };
   }
@@ -145,10 +145,19 @@ class WindowManager {
       return;
     }
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
-      }
+      this.showDictationPanelForDictation();
       this.mainWindow.webContents.send("start-dictation");
+    }
+  }
+
+  // Dictation still works with the panel hidden; only reveal it if the user
+  // did not hide it on purpose.
+  showDictationPanelForDictation() {
+    if (this.dictationPanelHiddenByUser) {
+      return;
+    }
+    if (this.mainWindow && !this.mainWindow.isDestroyed() && !this.mainWindow.isVisible()) {
+      this.mainWindow.show();
     }
   }
 
@@ -326,6 +335,7 @@ class WindowManager {
 
   showDictationPanel(options = {}) {
     const { focus = false } = options;
+    this.dictationPanelHiddenByUser = false;
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       if (!this.mainWindow.isVisible()) {
         if (typeof this.mainWindow.showInactive === "function") {
@@ -353,6 +363,7 @@ class WindowManager {
   }
 
   hideDictationPanel() {
+    this.dictationPanelHiddenByUser = true;
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       if (process.platform === "darwin") {
         this.mainWindow.hide();

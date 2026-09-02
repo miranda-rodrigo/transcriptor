@@ -11,6 +11,8 @@ const MAIN_WINDOW_CONFIG = {
     contextIsolation: true,
     enableRemoteModule: false,
     sandbox: true,
+    // Dictation keeps running while the panel is hidden by the user.
+    backgroundThrottling: false,
   },
   frame: false,
   alwaysOnTop: true,

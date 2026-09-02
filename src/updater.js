@@ -5,6 +5,33 @@ const { isAppInstallWritable } = require("./helpers/installLocation");
 const MANAGED_INSTALL_MESSAGE =
   "This copy of OpenWhispr cannot be updated in place. On a managed Mac, ask IT to deploy the latest DMG. Otherwise install a writable copy in Applications or ~/Applications from the latest DMG.";
 
+const NO_RELEASE_MESSAGE = "You are running the latest version";
+
+function getErrorMessage(error) {
+  if (!error) return "";
+  if (typeof error === "string") return error;
+  if (typeof error.message === "string") return error.message;
+  return String(error);
+}
+
+// electron-updater throws when the GitHub repo has no published release yet
+// (404 on latest-mac.yml / releases.atom). That is the normal state for this
+// fork, so it must not surface as an error to the user.
+function isNoReleaseError(error) {
+  const msg = getErrorMessage(error).toLowerCase();
+  if (!msg) return false;
+  return (
+    msg.includes("unable to find latest version") ||
+    msg.includes("cannot find channel") ||
+    msg.includes("latest-mac.yml") ||
+    msg.includes("latest.yml") ||
+    msg.includes("no published versions") ||
+    msg.includes("releases.atom") ||
+    msg.includes("httperror: 404") ||
+    (msg.includes("404") && msg.includes("github"))
+  );
+}
+
 class UpdateManager {
   constructor() {
     this.mainWindow = null;
@@ -14,6 +41,7 @@ class UpdateManager {
     this.lastUpdateInfo = null;
     this.isInstalling = false;
     this.isDownloading = false;
+    this.manualCheckInProgress = false;
     this.appWritable = isAppInstallWritable();
     this.ipcHandlers = [];
     this.eventListeners = [];
@@ -81,9 +109,19 @@ class UpdateManager {
         this.notifyRenderers("update-not-available", info);
       },
       error: (err) => {
-        console.error("❌ Auto-updater error:", err);
         this.isDownloading = false;
-        this.notifyRenderers("update-error", err);
+        if (isNoReleaseError(err)) {
+          this.updateAvailable = false;
+          this.updateDownloaded = false;
+          this.lastUpdateInfo = null;
+          this.notifyRenderers("update-not-available");
+          return;
+        }
+        console.error("❌ Auto-updater error:", err);
+        // Background checks stay silent; manual checks get their error via the IPC reply.
+        if (this.manualCheckInProgress) {
+          this.notifyRenderers("update-error", { message: getErrorMessage(err) });
+        }
       },
       "download-progress": (progressObj) => {
         console.log(
@@ -141,7 +179,13 @@ class UpdateManager {
             }
 
             console.log("🔍 Checking for updates...");
-            const result = await autoUpdater.checkForUpdates();
+            this.manualCheckInProgress = true;
+            let result;
+            try {
+              result = await autoUpdater.checkForUpdates();
+            } finally {
+              this.manualCheckInProgress = false;
+            }
 
             if (result?.isUpdateAvailable && result?.updateInfo) {
               console.log("📋 Update available:", result.updateInfo.version);
@@ -162,10 +206,16 @@ class UpdateManager {
               console.log("✅ Already on latest version");
               return {
                 updateAvailable: false,
-                message: "You are running the latest version",
+                message: NO_RELEASE_MESSAGE,
               };
             }
           } catch (error) {
+            if (isNoReleaseError(error)) {
+              return {
+                updateAvailable: false,
+                message: NO_RELEASE_MESSAGE,
+              };
+            }
             console.error("❌ Update check error:", error);
             throw error;
           }
@@ -323,6 +373,7 @@ class UpdateManager {
       setTimeout(() => {
         console.log("🔄 Checking for updates on startup...");
         autoUpdater.checkForUpdates().catch((err) => {
+          if (isNoReleaseError(err)) return;
           console.error("Startup update check failed:", err);
         });
       }, 3000); // Reduced from 5s to 3s for better UX

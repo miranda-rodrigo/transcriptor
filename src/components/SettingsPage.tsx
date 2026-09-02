@@ -104,7 +104,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     downloadUpdate,
     installUpdate: installUpdateAction,
     getAppVersion,
-    error: updateError,
   } = useUpdater();
 
   const isUpdateAvailable =
@@ -149,18 +148,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       clearTimeout(timer);
     };
   }, [whisperHook, getAppVersion]);
-
-  // Show alert dialog on update errors
-  useEffect(() => {
-    if (updateError) {
-      showAlertDialog({
-        title: "Update Error",
-        description:
-          updateError.message ||
-          "The updater encountered a problem. Please try again or download the latest release manually.",
-      });
-    }
-  }, [updateError, showAlertDialog]);
 
   useEffect(() => {
     if (installInitiated) {

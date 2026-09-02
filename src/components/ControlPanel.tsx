@@ -69,7 +69,6 @@ export default function ControlPanel() {
     isInstalling,
     downloadUpdate,
     installUpdate,
-    error: updateError,
   } = useUpdater();
 
   const {
@@ -94,16 +93,6 @@ export default function ControlPanel() {
       });
     }
   }, [updateStatus.updateDownloaded, isDownloading, toast]);
-
-  useEffect(() => {
-    if (updateError) {
-      toast({
-        title: "Update Error",
-        description: "Failed to update. Please try again later.",
-        variant: "destructive",
-      });
-    }
-  }, [updateError, toast]);
 
   const loadTranscriptions = async () => {
     try {

@@ -203,7 +203,7 @@ async function startApp() {
       if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
         if (isLiveWindow(windowManager.mainWindow)) {
           const activationMode = await windowManager.getActivationMode();
-          windowManager.showDictationPanel();
+          windowManager.showDictationPanelForDictation();
           if (activationMode === "push") {
             // Track when key was pressed for push-to-talk
             globeKeyDownTime = Date.now();
