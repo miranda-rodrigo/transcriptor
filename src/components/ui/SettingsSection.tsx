@@ -40,7 +40,7 @@ export const SettingsGroup: React.FC<SettingsGroupProps> = ({
   const baseClasses = "space-y-4 p-4 rounded-xl border";
   const variantClasses = {
     default: "bg-secondary border-border",
-    highlighted: "bg-accent/10 border-blue-200",
+    highlighted: "bg-accent/10 border-accent/30",
   };
 
   return (

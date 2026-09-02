@@ -22,6 +22,25 @@ export const PROVIDER_ICONS: Record<string, string> = {
   "openai-oss": openaiOssIcon,
 };
 
+// These SVGs ship without a fill (rendered black), so they vanish on dark surfaces
+// unless inverted. The others carry their own brand colors.
+const MONOCHROME_ICON_URLS = new Set([
+  openaiIcon,
+  anthropicIcon,
+  qwenIcon,
+  nvidiaIcon,
+  openaiOssIcon,
+]);
+
 export function getProviderIcon(provider: string): string | undefined {
   return PROVIDER_ICONS[provider];
+}
+
+export function isMonochromeProviderIcon(iconUrl: string | undefined): boolean {
+  return Boolean(iconUrl && MONOCHROME_ICON_URLS.has(iconUrl));
+}
+
+/** Tailwind classes to keep a provider icon visible in both color schemes. */
+export function providerIconClassName(iconUrl: string | undefined): string {
+  return isMonochromeProviderIcon(iconUrl) ? "dark:invert" : "";
 }

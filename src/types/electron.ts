@@ -115,6 +115,14 @@ export interface PasteToolsResult {
   recommendedInstall?: string;
 }
 
+export type ThemeSource = "light" | "dark" | "system";
+
+export interface ThemeSetResult {
+  success: boolean;
+  themeSource?: ThemeSource;
+  error?: string;
+}
+
 // Additional interface missing from preload.js
 export interface SaveSettings {
   useLocalWhisper: boolean;
@@ -332,6 +340,10 @@ declare global {
       cleanupApp: () => Promise<{ success: boolean; message: string }>;
       getTranscriptionHistory: () => Promise<any[]>;
       clearTranscriptionHistory: () => Promise<void>;
+
+      // Appearance
+      getThemeSource: () => Promise<ThemeSource>;
+      setThemeSource: (source: ThemeSource) => Promise<ThemeSetResult>;
 
       // Update operations
       checkForUpdates: () => Promise<UpdateCheckResult>;

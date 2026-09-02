@@ -156,7 +156,7 @@ export default function LocalWhisperPicker({
         <h5 className={`${styles.header} mb-3`}>Whisper Models</h5>
 
         {loadError && models.length === 0 && (
-          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <div className="mb-3 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-foreground">
             <p>{loadError}</p>
             <Button
               onClick={() => {
@@ -244,7 +244,7 @@ export default function LocalWhisperPicker({
                         disabled={isCancelling}
                         size="sm"
                         variant="outline"
-                        className="text-red-600 border-red-300 hover:bg-red-50"
+                        className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
                       >
                         <X size={14} />
                         <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>

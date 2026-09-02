@@ -1,5 +1,6 @@
 import { Brain, Wrench, HardDrive } from "lucide-react";
-import { getProviderIcon } from "@/utils/providerIcons";
+import { getProviderIcon, providerIconClassName } from "@/utils/providerIcons";
+import { cn } from "../lib/utils";
 
 interface ProviderIconProps {
   provider: string;
@@ -21,5 +22,11 @@ export function ProviderIcon({ provider, className = "w-5 h-5" }: ProviderIconPr
     return <Brain className={className} />;
   }
 
-  return <img src={iconUrl} alt={`${provider} icon`} className={className} />;
+  return (
+    <img
+      src={iconUrl}
+      alt={`${provider} icon`}
+      className={cn(className, providerIconClassName(iconUrl))}
+    />
+  );
 }

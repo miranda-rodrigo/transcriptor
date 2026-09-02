@@ -40,6 +40,7 @@ const TrayManager = require("./src/helpers/tray");
 const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
+const ThemeManager = require("./src/helpers/themeManager");
 const { warnIfRunningFromInstaller } = require("./src/helpers/installLocation");
 
 // Set up PATH for production builds to find system tools (whisper.cpp, ffmpeg)
@@ -69,7 +70,8 @@ setupProductionPath();
 // Initialize managers
 const environmentManager = new EnvironmentManager();
 debugLogger.refreshLogLevel();
-const windowManager = new WindowManager();
+const themeManager = new ThemeManager();
+const windowManager = new WindowManager({ themeManager });
 const hotkeyManager = windowManager.hotkeyManager;
 const databaseManager = new DatabaseManager();
 const clipboardManager = new ClipboardManager();
@@ -116,10 +118,14 @@ const ipcHandlers = new IPCHandlers({
   parakeetManager,
   windowManager,
   trayManager,
+  themeManager,
 });
 
 // Main application startup
 async function startApp() {
+  // Apply the persisted appearance before any window paints its first frame.
+  themeManager.load();
+
   // In development, add a small delay to let Vite start properly
   if (process.env.NODE_ENV === "development") {
     await new Promise((resolve) => setTimeout(resolve, 2000));

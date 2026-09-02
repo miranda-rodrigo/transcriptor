@@ -294,7 +294,7 @@ export default function LocalModelPicker({
                           disabled={isCancelling}
                           size="sm"
                           variant="outline"
-                          className="text-red-600 border-red-300 hover:bg-red-50"
+                          className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
                         >
                           <X size={14} />
                           <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>

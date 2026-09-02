@@ -1,5 +1,6 @@
 import { Globe } from "lucide-react";
 import type { ColorScheme } from "../../utils/modelPickerStyles";
+import { providerIconClassName } from "../../utils/providerIcons";
 
 export interface ModelCardOption {
   value: string;
@@ -67,7 +68,12 @@ export default function ModelCardList({
               <div>
                 <div className="flex items-center gap-2">
                   {model.icon ? (
-                    <img src={model.icon} alt="" className="w-4 h-4" aria-hidden="true" />
+                    <img
+                      src={model.icon}
+                      alt=""
+                      className={`w-4 h-4 ${providerIconClassName(model.icon)}`}
+                      aria-hidden="true"
+                    />
                   ) : (
                     <Globe className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                   )}

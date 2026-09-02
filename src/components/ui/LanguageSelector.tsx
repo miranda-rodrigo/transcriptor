@@ -97,7 +97,7 @@ export default function LanguageSelector({
         onClick={() => setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
         className={`w-full flex items-center justify-between px-3 py-2 border border-border rounded-md bg-card text-left hover:border-muted-foreground/50 focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none transition-colors ${
-          isOpen ? "border-blue-500 ring-1 ring-blue-500" : ""
+          isOpen ? "border-accent ring-1 ring-accent" : ""
         }`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -122,7 +122,7 @@ export default function LanguageSelector({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Search languages..."
-                className="w-full pl-9 pr-8 py-2 text-sm border border-border rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                className="w-full pl-9 pr-8 py-2 text-sm border border-border rounded-md focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none"
               />
               {searchQuery && (
                 <button
@@ -145,13 +145,13 @@ export default function LanguageSelector({
                     type="button"
                     onClick={() => handleSelect(language.value)}
                     className={`w-full px-3 py-2 text-left text-sm hover:bg-secondary focus:bg-secondary focus:outline-none ${
-                      language.value === value ? "bg-accent/10 text-blue-700" : ""
+                      language.value === value ? "bg-accent/10 text-foreground" : ""
                     } ${index === highlightedIndex ? "bg-secondary" : ""}`}
                     role="option"
                     aria-selected={language.value === value}
                   >
                     {language.label}
-                    {language.value === value && <span className="ml-2 text-blue-500">✓</span>}
+                    {language.value === value && <span className="ml-2 text-accent">✓</span>}
                   </button>
                 ))}
               </div>

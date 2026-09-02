@@ -261,20 +261,20 @@ export function HotkeyInput({
             disabled
               ? "bg-secondary border-border cursor-not-allowed opacity-60"
               : isCapturing
-                ? "bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-400 shadow-lg shadow-indigo-100"
-                : "bg-card border-border hover:border-muted-foreground/30 hover:shadow-md"
+                ? "bg-accent/5 border-accent"
+                : "bg-card border-border hover:border-muted-foreground/30"
           }
         `}
       >
         {isCapturing && (
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-pulse" />
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent animate-pulse" />
         )}
 
         <div className="px-6 py-5">
           {isCapturing ? (
             <div className="space-y-3">
               <div className="flex items-center justify-center gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
                 <span className="text-sm font-medium text-muted-foreground">Recording</span>
               </div>
 
@@ -283,13 +283,13 @@ export function HotkeyInput({
                   {Array.from(activeModifiers).map((mod) => (
                     <kbd
                       key={mod}
-                      className="px-2.5 py-1.5 bg-accent/10 border border-indigo-200 rounded-lg text-sm font-semibold text-accent shadow-sm"
+                      className="px-2.5 py-1.5 bg-accent/10 border border-accent/40 rounded-lg text-sm font-semibold text-accent"
                     >
                       {mod}
                     </kbd>
                   ))}
-                  <span className="text-indigo-400 font-medium">+</span>
-                  <span className="px-2.5 py-1.5 border-2 border-dashed border-indigo-300 rounded-lg text-sm text-indigo-400">
+                  <span className="text-muted-foreground font-medium">+</span>
+                  <span className="px-2.5 py-1.5 border-2 border-dashed border-muted-foreground/40 rounded-lg text-sm text-muted-foreground">
                     key
                   </span>
                 </div>
@@ -316,13 +316,13 @@ export function HotkeyInput({
                 </div>
               ) : isGlobe ? (
                 <div className="flex items-center gap-2">
-                  <kbd className="px-4 py-2 bg-gradient-to-b from-gray-50 to-gray-100 border border-border rounded-xl text-2xl shadow-sm">
+                  <kbd className="px-4 py-2 bg-secondary border border-border rounded-xl text-2xl">
                     🌐
                   </kbd>
                   <span className="text-sm font-medium text-muted-foreground">Globe/Fn</span>
                 </div>
               ) : (
-                <kbd className="px-5 py-3 bg-gradient-to-b from-gray-50 to-gray-100 border border-border rounded-xl text-xl font-bold text-foreground shadow-sm min-w-[60px] text-center">
+                <kbd className="px-5 py-3 bg-secondary border border-border rounded-xl text-xl font-bold text-foreground min-w-[60px] text-center">
                   {displayValue}
                 </kbd>
               )}

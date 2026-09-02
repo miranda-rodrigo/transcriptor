@@ -466,7 +466,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 </p>
               </div>
               {!updateStatus.isDevelopment && updateStatus.appWritable === false && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-foreground">
                   {updateStatus.installBlockedReason ||
                     "OpenWhispr is installed in a location your account cannot modify. Ask IT to update the app, or install a copy in your home folder."}
                 </div>
@@ -667,7 +667,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
               </div>
 
-              <div className="mt-6 flex items-center justify-between gap-4 p-4 bg-neutral-50 rounded-lg">
+              <div className="mt-6 flex items-center justify-between gap-4 p-4 bg-card border border-border rounded-lg">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">
                     Play sound when recording starts and stops
@@ -679,7 +679,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 <Toggle checked={playSoundFeedback} onChange={setPlaySoundFeedback} />
               </div>
 
-              <div className="mt-4 flex items-center justify-between gap-4 p-4 bg-neutral-50 rounded-lg">
+              <div className="mt-4 flex items-center justify-between gap-4 p-4 bg-card border border-border rounded-lg">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">
                     Restore previous clipboard after pasting

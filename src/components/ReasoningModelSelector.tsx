@@ -609,7 +609,7 @@ export default function ReasoningModelSelector({
                           </Button>
                         </div>
                         {isCustomBaseDirty && (
-                          <p className="text-xs text-amber-600">
+                          <p className="text-xs text-warning">
                             Apply the new base URL to refresh models.
                           </p>
                         )}
@@ -636,20 +636,20 @@ export default function ReasoningModelSelector({
                       <div className="space-y-3 pt-4 border-t border-border">
                         <h4 className="text-sm font-medium text-muted-foreground">Available Models</h4>
                         {!hasCustomBase && (
-                          <p className="text-xs text-amber-600">Enter a base URL to load models.</p>
+                          <p className="text-xs text-warning">Enter a base URL to load models.</p>
                         )}
                         {hasCustomBase && (
                           <>
                             {customModelsLoading && (
-                              <p className="text-xs text-blue-600">Fetching model list...</p>
+                              <p className="text-xs text-accent">Fetching model list...</p>
                             )}
                             {customModelsError && (
-                              <p className="text-xs text-red-600">{customModelsError}</p>
+                              <p className="text-xs text-destructive">{customModelsError}</p>
                             )}
                             {!customModelsLoading &&
                               !customModelsError &&
                               customModelOptions.length === 0 && (
-                                <p className="text-xs text-amber-600">
+                                <p className="text-xs text-warning">
                                   No models returned by this endpoint.
                                 </p>
                               )}

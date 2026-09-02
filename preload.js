@@ -141,6 +141,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   trayUpdateMicSettings: (settings) => ipcRenderer.invoke("tray-update-mic-settings", settings),
   trayUpdateRecordingState: (state) => ipcRenderer.invoke("tray-update-recording-state", state),
 
+  // Appearance
+  getThemeSource: () => ipcRenderer.invoke("theme:get"),
+  setThemeSource: (source) => ipcRenderer.invoke("theme:set", source),
+
   // Update functions
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
   downloadUpdate: () => ipcRenderer.invoke("download-update"),

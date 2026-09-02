@@ -58,8 +58,8 @@ export default function MicPermissionWarning({
   const config = useMemo(() => PLATFORM_CONFIG[getPlatform()], []);
 
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
-      <p className="text-sm text-amber-900">{error || config.message}</p>
+    <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 space-y-3">
+      <p className="text-sm text-foreground">{error || config.message}</p>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={onOpenSoundSettings}>
           {config.soundLabel}

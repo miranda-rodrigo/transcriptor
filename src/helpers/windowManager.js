@@ -6,9 +6,10 @@ const DevServerManager = require("./devServerManager");
 const { MAIN_WINDOW_CONFIG, CONTROL_PANEL_CONFIG, WindowPositionUtil } = require("./windowConfig");
 
 class WindowManager {
-  constructor() {
+  constructor({ themeManager } = {}) {
     this.mainWindow = null;
     this.controlPanelWindow = null;
+    this.themeManager = themeManager || null;
     this.tray = null;
     this.hotkeyManager = new HotkeyManager();
     this.dragManager = new DragManager();
@@ -216,7 +217,11 @@ class WindowManager {
       return;
     }
 
-    this.controlPanelWindow = new BrowserWindow(CONTROL_PANEL_CONFIG);
+    this.controlPanelWindow = new BrowserWindow({
+      ...CONTROL_PANEL_CONFIG,
+      ...(this.themeManager && { backgroundColor: this.themeManager.getBackgroundColor() }),
+    });
+    this.themeManager?.bindWindow(this.controlPanelWindow);
 
     const visibilityTimer = setTimeout(() => {
       if (!this.controlPanelWindow || this.controlPanelWindow.isDestroyed()) {

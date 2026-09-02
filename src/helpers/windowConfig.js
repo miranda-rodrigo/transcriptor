@@ -50,7 +50,7 @@ const CONTROL_PANEL_CONFIG = {
     trafficLightPosition: { x: 20, y: 20 },
   }),
   transparent: false,
-  backgroundColor: "#ffffff",
+  // backgroundColor is set at creation time from ThemeManager so it matches the active scheme.
   minimizable: true,
   maximizable: true,
   closable: true,

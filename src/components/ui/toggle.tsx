@@ -11,7 +11,7 @@ export const Toggle = ({ checked, onChange, disabled = false }: ToggleProps) => 
     onClick={() => !disabled && onChange(!checked)}
     disabled={disabled}
     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent/30 focus:ring-offset-1 ${
-      checked ? "bg-accent" : "bg-neutral-300"
+      checked ? "bg-accent" : "bg-muted-foreground/40"
     } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
   >
     <span

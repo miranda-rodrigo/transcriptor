@@ -180,6 +180,7 @@ temp/
 # Electron specific
 out/
 dist/
+apps/
 build/
 *.dmg
 *.exe

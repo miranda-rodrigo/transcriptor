@@ -14,6 +14,7 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.modelManager = managers.modelManager;
     this.trayManager = managers.trayManager;
+    this.themeManager = managers.themeManager;
     this.setupHandlers();
   }
 
@@ -83,6 +84,18 @@ class IPCHandlers {
     ipcMain.handle("tray-update-recording-state", (_event, state) => {
       this.trayManager?.setRecordingState?.(state);
       return { success: true };
+    });
+
+    // Appearance handlers
+    ipcMain.handle("theme:get", () => {
+      return this.themeManager?.get?.() ?? "system";
+    });
+
+    ipcMain.handle("theme:set", (_event, source) => {
+      if (!this.themeManager) {
+        return { success: false, error: "Theme manager unavailable" };
+      }
+      return this.themeManager.set(source);
     });
 
     // Environment handlers

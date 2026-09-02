@@ -15,6 +15,7 @@ import {
   Copy,
 } from "lucide-react";
 import SupportDropdown from "./ui/SupportDropdown";
+import ThemeToggle from "./ui/ThemeToggle";
 import TranscriptionItem from "./ui/TranscriptionItem";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
@@ -312,7 +313,7 @@ export default function ControlPanel() {
 
       {/* Sidebar */}
       <aside className="w-64 border-r border-border bg-sidebar flex flex-col shrink-0">
-        <div className="p-6 border-b border-border" style={{ WebkitAppRegion: "drag" }}>
+        <div className="px-6 pb-6 pt-10 border-b border-border" style={{ WebkitAppRegion: "drag" }}>
           <div className="flex items-center gap-3" style={{ WebkitAppRegion: "no-drag" }}>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-foreground">
               <Mic className="h-4 w-4" />
@@ -358,7 +359,7 @@ export default function ControlPanel() {
                   <button
                     onClick={handleUpdateClick}
                     disabled={isInstalling}
-                    className="w-full rounded-md bg-accent text-accent-foreground py-2 text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50"
+                    className="w-full rounded-md bg-primary text-primary-foreground py-2 text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                   >
                     {isInstalling ? (
                       <span className="flex items-center justify-center gap-2">
@@ -389,7 +390,7 @@ export default function ControlPanel() {
                   <p className="text-xs text-muted-foreground mb-2">Update Available</p>
                   <button
                     onClick={handleUpdateClick}
-                    className="w-full rounded-md bg-accent text-accent-foreground py-2 text-sm font-medium hover:bg-accent/90 transition-colors"
+                    className="w-full rounded-md bg-primary text-primary-foreground py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
                   >
                     <span className="flex items-center justify-center gap-2">
                       <Download size={14} />
@@ -403,8 +404,9 @@ export default function ControlPanel() {
         )}
 
         {/* Sidebar footer with support and quit */}
-        <div className="p-4 border-t border-border flex items-center justify-between">
+        <div className="p-4 border-t border-border flex items-center justify-between gap-2">
           <SupportDropdown />
+          <ThemeToggle />
           <Button
             variant="ghost"
             size="icon"
