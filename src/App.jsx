@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
 import { X } from "lucide-react";
 import { useToast } from "./components/ui/Toast";
-import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioRecording } from "./hooks/useAudioRecording";
@@ -25,7 +24,7 @@ const SoundWaveIcon = ({ size = 16 }) => {
   );
 };
 
-// Voice Wave Animation Component (for processing state)
+// Voice Wave Animation Component (for recording state)
 const VoiceWaveIndicator = ({ isListening }) => {
   return (
     <div className="flex items-center justify-center gap-0.5">
@@ -44,6 +43,10 @@ const VoiceWaveIndicator = ({ isListening }) => {
     </div>
   );
 };
+
+const ProcessingSpinner = () => (
+  <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+);
 
 // Enhanced Tooltip Component
 const Tooltip = ({ children, content, emoji }) => {
@@ -277,10 +280,10 @@ export default function App() {
             }
           }}
         >
-          {isRecording && isHovered && (
-            <Tooltip content="Cancel recording">
+          {(isRecording || isProcessing) && isHovered && (
+            <Tooltip content={isProcessing ? "Cancel processing" : "Cancel recording"}>
               <button
-                aria-label="Cancel recording"
+                aria-label={isProcessing ? "Cancel processing" : "Cancel recording"}
                 onClick={(e) => {
                   e.stopPropagation();
                   cancelRecording();
@@ -361,9 +364,9 @@ export default function App() {
               {micState === "idle" || micState === "hover" ? (
                 <SoundWaveIcon size={micState === "idle" ? 12 : 14} />
               ) : micState === "recording" ? (
-                <LoadingDots />
-              ) : micState === "processing" ? (
                 <VoiceWaveIndicator isListening={true} />
+              ) : micState === "processing" ? (
+                <ProcessingSpinner />
               ) : null}
 
               {/* State indicator ring for recording */}

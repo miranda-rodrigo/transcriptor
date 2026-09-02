@@ -80,6 +80,11 @@ class IPCHandlers {
       return { success: true };
     });
 
+    ipcMain.handle("tray-update-recording-state", (_event, state) => {
+      this.trayManager?.setRecordingState?.(state);
+      return { success: true };
+    });
+
     // Environment handlers
     ipcMain.handle("get-openai-key", async (event) => {
       return this.environmentManager.getOpenAIKey();
@@ -143,8 +148,8 @@ class IPCHandlers {
     });
 
     // Clipboard handlers
-    ipcMain.handle("paste-text", async (event, text) => {
-      return this.clipboardManager.pasteText(text);
+    ipcMain.handle("paste-text", async (event, text, options) => {
+      return this.clipboardManager.pasteText(text, options);
     });
 
     ipcMain.handle("read-clipboard", async (event) => {

@@ -15,6 +15,8 @@ export const useAudioRecording = (toast, options = {}) => {
       onStateChange: ({ isRecording, isProcessing }) => {
         setIsRecording(isRecording);
         setIsProcessing(isProcessing);
+        const trayState = isRecording ? "recording" : isProcessing ? "processing" : "idle";
+        window.electronAPI?.trayUpdateRecordingState?.(trayState);
       },
       onError: (error) => {
         toast({
@@ -103,6 +105,7 @@ export const useAudioRecording = (toast, options = {}) => {
       if (audioManagerRef.current) {
         audioManagerRef.current.cleanup();
       }
+      window.electronAPI?.trayUpdateRecordingState?.("idle");
     };
   }, [toast, onToggle]);
 

@@ -4,6 +4,7 @@ const { killProcess } = require("../utils/process");
 
 const CACHE_TTL_MS = 30000;
 const PASTE_DELAY_MS = 50;
+const CLIPBOARD_RESTORE_DELAY_MS = 300;
 
 class ClipboardManager {
   constructor() {
@@ -22,8 +23,69 @@ class ClipboardManager {
     }
   }
 
-  async pasteText(text) {
+  snapshotClipboard() {
+    const snapshot = {};
+
+    try {
+      const text = clipboard.readText();
+      if (text) {
+        snapshot.text = text;
+      }
+    } catch {
+      // Ignore text snapshot failures
+    }
+
+    try {
+      const html = clipboard.readHTML();
+      if (html) {
+        snapshot.html = html;
+      }
+    } catch {
+      // Ignore HTML snapshot failures
+    }
+
+    try {
+      const rtf = clipboard.readRTF();
+      if (rtf) {
+        snapshot.rtf = rtf;
+      }
+    } catch {
+      // Ignore RTF snapshot failures
+    }
+
+    try {
+      const image = clipboard.readImage();
+      if (image && !image.isEmpty()) {
+        snapshot.image = image;
+      }
+    } catch {
+      // Ignore image snapshot failures
+    }
+
+    return Object.keys(snapshot).length > 0 ? snapshot : null;
+  }
+
+  restoreClipboardSnapshot(snapshot, dictatedText) {
+    if (!snapshot) {
+      return;
+    }
+
+    try {
+      if (clipboard.readText() !== dictatedText) {
+        this.safeLog("Skipping clipboard restore because clipboard changed");
+        return;
+      }
+      clipboard.write(snapshot);
+      this.safeLog("Restored previous clipboard contents");
+    } catch (error) {
+      this.safeLog("Failed to restore clipboard", { error: error.message });
+    }
+  }
+
+  async pasteText(text, options = {}) {
     const startTime = Date.now();
+    const restoreClipboard = options?.restoreClipboard !== false;
+    const snapshot = restoreClipboard ? this.snapshotClipboard() : null;
 
     try {
       clipboard.writeText(text);
@@ -41,6 +103,12 @@ class ClipboardManager {
 
       this.safeLog("✅ Permissions granted, attempting to paste...");
       await this.pasteMacOS();
+
+      if (restoreClipboard && snapshot) {
+        setTimeout(() => {
+          this.restoreClipboardSnapshot(snapshot, text);
+        }, CLIPBOARD_RESTORE_DELAY_MS);
+      }
 
       this.safeLog("✅ Paste operation complete", {
         elapsedMs: Date.now() - startTime,

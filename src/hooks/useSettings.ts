@@ -230,6 +230,20 @@ export function useSettings() {
     deserialize: String,
   });
 
+  const [playSoundFeedback, setPlaySoundFeedback] = useLocalStorage("playSoundFeedback", true, {
+    serialize: String,
+    deserialize: (value) => value !== "false",
+  });
+
+  const [restoreClipboardAfterPaste, setRestoreClipboardAfterPaste] = useLocalStorage(
+    "restoreClipboardAfterPaste",
+    true,
+    {
+      serialize: String,
+      deserialize: (value) => value !== "false",
+    }
+  );
+
   // Computed values
   const reasoningProvider = getModelProvider(reasoningModel);
 
@@ -344,6 +358,10 @@ export function useSettings() {
     selectedMicDeviceId,
     setPreferBuiltInMic,
     setSelectedMicDeviceId,
+    playSoundFeedback,
+    setPlaySoundFeedback,
+    restoreClipboardAfterPaste,
+    setRestoreClipboardAfterPaste,
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,

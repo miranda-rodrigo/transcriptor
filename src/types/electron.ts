@@ -127,7 +127,7 @@ declare global {
   interface Window {
     electronAPI: {
       // Basic window operations
-      pasteText: (text: string) => Promise<void>;
+      pasteText: (text: string, options?: { restoreClipboard?: boolean }) => Promise<void>;
       hideWindow: () => Promise<void>;
       showDictationPanel: () => Promise<void>;
       onToggleDictation: (callback: () => void) => (() => void) | void;
@@ -323,6 +323,9 @@ declare global {
         preferBuiltInMic: boolean;
         selectedMicDeviceId: string;
       }) => Promise<{ success: boolean }>;
+      trayUpdateRecordingState: (
+        state: "idle" | "recording" | "processing"
+      ) => Promise<{ success: boolean }>;
 
       // App management
       appQuit: () => Promise<void>;

@@ -22,6 +22,7 @@ import type { UpdateInfoResult } from "../types/electron";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
+import { Toggle } from "./ui/toggle";
 
 export type SettingsSectionType =
   | "general"
@@ -67,6 +68,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     selectedMicDeviceId,
     setPreferBuiltInMic,
     setSelectedMicDeviceId,
+    playSoundFeedback,
+    setPlaySoundFeedback,
+    restoreClipboardAfterPaste,
+    setRestoreClipboardAfterPaste,
     setUseLocalWhisper,
     setLocalTranscriptionProvider,
     setWhisperModel,
@@ -660,6 +665,33 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   Activation Mode
                 </label>
                 <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+              </div>
+
+              <div className="mt-6 flex items-center justify-between gap-4 p-4 bg-neutral-50 rounded-lg">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">
+                    Play sound when recording starts and stops
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Short tones so you can dictate without looking at the screen.
+                  </p>
+                </div>
+                <Toggle checked={playSoundFeedback} onChange={setPlaySoundFeedback} />
+              </div>
+
+              <div className="mt-4 flex items-center justify-between gap-4 p-4 bg-neutral-50 rounded-lg">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">
+                    Restore previous clipboard after pasting
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Put back what you had copied after the dictated text is pasted.
+                  </p>
+                </div>
+                <Toggle
+                  checked={restoreClipboardAfterPaste}
+                  onChange={setRestoreClipboardAfterPaste}
+                />
               </div>
             </div>
 

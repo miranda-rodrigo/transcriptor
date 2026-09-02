@@ -23,7 +23,7 @@ const registerListener = (channel, handlerFactory) => {
 };
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  pasteText: (text) => ipcRenderer.invoke("paste-text", text),
+  pasteText: (text, options) => ipcRenderer.invoke("paste-text", text, options),
   hideWindow: () => ipcRenderer.invoke("hide-window"),
   showDictationPanel: () => ipcRenderer.invoke("show-dictation-panel"),
   onToggleDictation: registerListener(
@@ -139,6 +139,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("set-main-window-interactivity", interactive),
   trayUpdateAudioDevices: (devices) => ipcRenderer.invoke("tray-update-audio-devices", devices),
   trayUpdateMicSettings: (settings) => ipcRenderer.invoke("tray-update-mic-settings", settings),
+  trayUpdateRecordingState: (state) => ipcRenderer.invoke("tray-update-recording-state", state),
 
   // Update functions
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),

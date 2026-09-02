@@ -2,6 +2,7 @@ import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
 import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
+import { playStartTone, playStopTone } from "../utils/soundFeedback";
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -34,6 +35,28 @@ class AudioManager {
     this.recordingStartTime = null;
     this.reasoningAvailabilityCache = { value: false, expiresAt: 0 };
     this.cachedReasoningPreference = null;
+    this.processingGeneration = 0;
+    this.activeStream = null;
+  }
+
+  isSoundFeedbackEnabled() {
+    return localStorage.getItem("playSoundFeedback") !== "false";
+  }
+
+  stopStreamTracks(stream = this.activeStream || this.mediaRecorder?.stream) {
+    if (!stream) {
+      return;
+    }
+    stream.getTracks().forEach((track) => {
+      try {
+        track.stop();
+      } catch {
+        // Track already stopped
+      }
+    });
+    if (this.activeStream === stream) {
+      this.activeStream = null;
+    }
   }
 
   setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
@@ -90,6 +113,7 @@ class AudioManager {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
       this.mediaRecorder = new MediaRecorder(stream);
+      this.activeStream = stream;
       this.audioChunks = [];
       this.recordingStartTime = Date.now();
       this.recordingMimeType = this.mediaRecorder.mimeType || "audio/webm";
@@ -99,6 +123,7 @@ class AudioManager {
       };
 
       this.mediaRecorder.onstop = async () => {
+        this.stopStreamTracks(stream);
         this.isRecording = false;
         this.isProcessing = true;
         this.onStateChange?.({ isRecording: false, isProcessing: true });
@@ -110,14 +135,14 @@ class AudioManager {
           : null;
         this.recordingStartTime = null;
         await this.processAudio(audioBlob, { durationSeconds });
-
-        // Clean up stream
-        stream.getTracks().forEach((track) => track.stop());
       };
 
       this.mediaRecorder.start();
       this.isRecording = true;
       this.onStateChange?.({ isRecording: true, isProcessing: false });
+      if (this.isSoundFeedbackEnabled()) {
+        playStartTone();
+      }
 
       return true;
     } catch (error) {
@@ -148,14 +173,19 @@ class AudioManager {
 
   stopRecording() {
     if (this.mediaRecorder?.state === "recording") {
+      if (this.isSoundFeedbackEnabled()) {
+        playStopTone();
+      }
       this.mediaRecorder.stop();
-      // State change will be handled in onstop callback
+      this.stopStreamTracks();
       return true;
     }
     return false;
   }
 
   cancelRecording() {
+    this.processingGeneration += 1;
+
     if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
       this.mediaRecorder.onstop = () => {
         this.isRecording = false;
@@ -166,17 +196,25 @@ class AudioManager {
       };
 
       this.mediaRecorder.stop();
-
-      if (this.mediaRecorder.stream) {
-        this.mediaRecorder.stream.getTracks().forEach((track) => track.stop());
-      }
-
+      this.stopStreamTracks();
       return true;
     }
+
+    if (this.isProcessing) {
+      this.isRecording = false;
+      this.isProcessing = false;
+      this.audioChunks = [];
+      this.recordingStartTime = null;
+      this.stopStreamTracks();
+      this.onStateChange?.({ isRecording: false, isProcessing: false });
+      return true;
+    }
+
     return false;
   }
 
   async processAudio(audioBlob, metadata = {}) {
+    const generation = this.processingGeneration;
     const pipelineStart = performance.now();
 
     try {
@@ -194,6 +232,10 @@ class AudioManager {
             : await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
       } else {
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
+      }
+
+      if (generation !== this.processingGeneration) {
+        return;
       }
 
       this.onTranscriptionComplete?.(result);
@@ -236,6 +278,10 @@ class AudioManager {
         "performance"
       );
 
+      if (generation !== this.processingGeneration) {
+        return;
+      }
+
       if (error.message !== "No audio detected") {
         this.onError?.({
           title: "Transcription Error",
@@ -243,8 +289,10 @@ class AudioManager {
         });
       }
     } finally {
-      this.isProcessing = false;
-      this.onStateChange?.({ isRecording: false, isProcessing: false });
+      if (generation === this.processingGeneration) {
+        this.isProcessing = false;
+        this.onStateChange?.({ isRecording: false, isProcessing: false });
+      }
     }
   }
 
@@ -1246,7 +1294,8 @@ class AudioManager {
 
   async safePaste(text) {
     try {
-      await window.electronAPI.pasteText(text);
+      const restoreClipboard = localStorage.getItem("restoreClipboardAfterPaste") !== "false";
+      await window.electronAPI.pasteText(text, { restoreClipboard });
       return true;
     } catch (error) {
       this.onError?.({

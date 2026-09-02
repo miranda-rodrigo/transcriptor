@@ -14,6 +14,9 @@ class TrayManager {
       preferBuiltInMic: true,
       selectedMicDeviceId: "",
     };
+    this.baseIcon = null;
+    this.stateIcons = null;
+    this.recordingState = "idle";
   }
 
   setWindows(mainWindow, controlPanelWindow) {
@@ -118,7 +121,9 @@ class TrayManager {
         return;
       }
 
-      this.tray = new Tray(trayIcon);
+      this.baseIcon = trayIcon;
+      this.stateIcons = this.buildStateIcons(trayIcon);
+      this.tray = new Tray(this.getIconForState(this.recordingState));
 
       if (process.platform === "darwin") {
         this.tray.setIgnoreDoubleClickEvents(true);
@@ -230,6 +235,92 @@ class TrayManager {
   setAudioDevices(devices = []) {
     this.audioDevices = Array.isArray(devices) ? devices : [];
     this.updateTrayMenu();
+  }
+
+  buildStateIcons(baseIcon) {
+    if (!baseIcon || baseIcon.isEmpty()) {
+      return { idle: baseIcon, recording: baseIcon, processing: baseIcon };
+    }
+
+    try {
+      const size = baseIcon.getSize();
+      const bitmap = baseIcon.toBitmap();
+      if (!bitmap || bitmap.length < 4 || !size.width || !size.height) {
+        return { idle: baseIcon, recording: baseIcon, processing: baseIcon };
+      }
+
+      const expectedBytes = size.width * size.height * 4;
+      const scaleFromBuffer = Math.sqrt(bitmap.length / expectedBytes);
+      const bitmapWidth = Math.round(size.width * (scaleFromBuffer >= 1.5 ? scaleFromBuffer : 1));
+      const bitmapHeight = Math.round(size.height * (scaleFromBuffer >= 1.5 ? scaleFromBuffer : 1));
+      const scaleFactor =
+        typeof baseIcon.getScaleFactor === "function"
+          ? baseIcon.getScaleFactor()
+          : scaleFromBuffer >= 1.5
+            ? scaleFromBuffer
+            : 1;
+
+      const recordingBuffer = Buffer.from(bitmap);
+      const processingBuffer = Buffer.from(bitmap);
+
+      for (let i = 0; i < recordingBuffer.length; i += 4) {
+        const alpha = recordingBuffer[i + 3];
+        if (alpha > 0) {
+          recordingBuffer[i] = 0x30;
+          recordingBuffer[i + 1] = 0x3b;
+          recordingBuffer[i + 2] = 0xff;
+        }
+        processingBuffer[i + 3] = Math.round(processingBuffer[i + 3] * 0.5);
+      }
+
+      const recording = nativeImage.createFromBitmap(recordingBuffer, {
+        width: bitmapWidth,
+        height: bitmapHeight,
+        scaleFactor,
+      });
+      recording.setTemplateImage(false);
+
+      const processing = nativeImage.createFromBitmap(processingBuffer, {
+        width: bitmapWidth,
+        height: bitmapHeight,
+        scaleFactor,
+      });
+      processing.setTemplateImage(true);
+
+      return { idle: baseIcon, recording, processing };
+    } catch (error) {
+      console.error("Failed to build tray state icons:", error.message);
+      return { idle: baseIcon, recording: baseIcon, processing: baseIcon };
+    }
+  }
+
+  getIconForState(state) {
+    if (this.stateIcons?.[state] && !this.stateIcons[state].isEmpty()) {
+      return this.stateIcons[state];
+    }
+    return this.baseIcon;
+  }
+
+  setRecordingState(state = "idle") {
+    const nextState = state === "recording" || state === "processing" ? state : "idle";
+    this.recordingState = nextState;
+
+    if (!this.tray) {
+      return { success: true };
+    }
+
+    const icon = this.getIconForState(nextState);
+    if (icon && !icon.isEmpty()) {
+      this.tray.setImage(icon);
+    }
+
+    const tooltips = {
+      recording: "Recording…",
+      processing: "Processing…",
+      idle: "OpenWhispr - Voice Dictation",
+    };
+    this.tray.setToolTip(tooltips[nextState]);
+    return { success: true };
   }
 
   setMicSettings(settings = {}) {
@@ -364,7 +455,7 @@ class TrayManager {
     if (!this.tray) return;
 
     const contextMenu = Menu.buildFromTemplate(this.buildContextMenuTemplate());
-    this.tray.setToolTip("OpenWhispr - Voice Dictation");
+    this.setRecordingState(this.recordingState);
     this.tray.setContextMenu(contextMenu);
   }
 
