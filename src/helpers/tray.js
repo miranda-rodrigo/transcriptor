@@ -2,6 +2,18 @@ const { Tray, Menu, nativeImage, app } = require("electron");
 const path = require("path");
 const fs = require("fs");
 
+// Frame interval (ms) for animated tray states. Single-frame states are static.
+const STATE_FRAME_INTERVAL_MS = {
+  recording: 120,
+  processing: 130,
+};
+
+const STATE_TOOLTIPS = {
+  recording: "Recording…",
+  processing: "Processing…",
+  idle: "OpenWhispr - Voice Dictation",
+};
+
 class TrayManager {
   constructor() {
     this.tray = null;
@@ -15,8 +27,12 @@ class TrayManager {
       selectedMicDeviceId: "",
     };
     this.baseIcon = null;
-    this.stateIcons = null;
+    this.trayAssetsDir = null;
+    // { idle: NativeImage[], recording: NativeImage[], processing: NativeImage[] }
+    this.stateFrames = null;
     this.recordingState = "idle";
+    this.appliedState = null;
+    this.animationTimer = null;
   }
 
   setWindows(mainWindow, controlPanelWindow) {
@@ -122,8 +138,8 @@ class TrayManager {
       }
 
       this.baseIcon = trayIcon;
-      this.stateIcons = this.buildStateIcons(trayIcon);
-      this.tray = new Tray(this.getIconForState(this.recordingState));
+      this.stateFrames = this.loadStateFrames(trayIcon);
+      this.tray = new Tray(this.getFramesForState(this.recordingState)[0]);
 
       if (process.platform === "darwin") {
         this.tray.setIgnoreDoubleClickEvents(true);
@@ -136,67 +152,100 @@ class TrayManager {
     }
   }
 
-  async loadTrayIcon() {
-    const platform = process.platform;
-    const isDevelopment = process.env.NODE_ENV === "development";
-
-    const candidatePaths = [];
-
-    if (platform === "darwin") {
-      if (isDevelopment) {
-        candidatePaths.push(path.join(__dirname, "..", "assets", "iconTemplate@3x.png"));
-      } else {
-        candidatePaths.push(
-          path.join(process.resourcesPath, "src", "assets", "iconTemplate@3x.png"),
-          path.join(process.resourcesPath, "assets", "iconTemplate@3x.png"),
-          path.join(
-            process.resourcesPath,
-            "app.asar.unpacked",
-            "src",
-            "assets",
-            "iconTemplate@3x.png"
-          ),
-          path.join(__dirname, "..", "..", "src", "assets", "iconTemplate@3x.png"),
-          path.join(app.getAppPath(), "src", "assets", "iconTemplate@3x.png")
-        );
-      }
-    } else {
-      const fileName = platform === "win32" ? "icon.ico" : "icon.png";
-      if (isDevelopment) {
-        candidatePaths.push(
-          path.join(__dirname, "..", "assets", fileName),
-          path.join(__dirname, "..", "assets", "icon.png")
-        );
-      } else {
-        candidatePaths.push(
-          path.join(process.resourcesPath, "src", "assets", fileName),
-          path.join(process.resourcesPath, "assets", fileName),
-          path.join(process.resourcesPath, "app.asar.unpacked", "src", "assets", fileName),
-          path.join(__dirname, "..", "..", "src", "assets", fileName),
-          path.join(app.getAppPath(), "src", "assets", fileName)
-        );
-      }
+  getAssetCandidateDirs() {
+    if (process.env.NODE_ENV === "development") {
+      return [path.join(__dirname, "..", "assets")];
     }
+    return [
+      path.join(process.resourcesPath, "src", "assets"),
+      path.join(process.resourcesPath, "assets"),
+      path.join(process.resourcesPath, "app.asar.unpacked", "src", "assets"),
+      path.join(__dirname, "..", "..", "src", "assets"),
+      path.join(app.getAppPath(), "src", "assets"),
+    ];
+  }
 
-    for (const testPath of candidatePaths) {
+  resolveAssetPath(...segments) {
+    for (const dir of this.getAssetCandidateDirs()) {
+      const candidate = path.join(dir, ...segments);
       try {
-        if (fs.existsSync(testPath)) {
-          const icon = nativeImage.createFromPath(testPath);
-          if (icon && !icon.isEmpty()) {
-            if (platform === "darwin") {
-              icon.setTemplateImage(true);
-            }
-            console.log("Using tray icon:", testPath);
-            return icon;
-          }
+        if (fs.existsSync(candidate)) {
+          return candidate;
         }
       } catch (error) {
-        console.error("Error checking tray icon path:", testPath, error.message);
+        console.error("Error checking tray asset path:", candidate, error.message);
+      }
+    }
+    return null;
+  }
+
+  async loadTrayIcon() {
+    if (process.platform === "darwin") {
+      // Template image (alpha only): macOS tints it for light/dark menu bars and highlight.
+      // createFromPath picks up the @2x/@3x variants next to the 1x file automatically.
+      const idlePath = this.resolveAssetPath("tray", "idleTemplate.png");
+      if (idlePath) {
+        const icon = nativeImage.createFromPath(idlePath);
+        if (icon && !icon.isEmpty()) {
+          icon.setTemplateImage(true);
+          this.trayAssetsDir = path.dirname(idlePath);
+          console.log("Using tray icon:", idlePath);
+          return icon;
+        }
+      }
+    } else {
+      const fileNames = process.platform === "win32" ? ["icon.ico", "icon.png"] : ["icon.png"];
+      for (const fileName of fileNames) {
+        const iconPath = this.resolveAssetPath(fileName);
+        if (!iconPath) continue;
+        const icon = nativeImage.createFromPath(iconPath);
+        if (icon && !icon.isEmpty()) {
+          console.log("Using tray icon:", iconPath);
+          return icon;
+        }
       }
     }
 
     console.error("Could not find tray icon in any expected location");
     return this.createFallbackIcon();
+  }
+
+  loadTemplateFrames(prefix) {
+    if (!this.trayAssetsDir) return [];
+
+    const pattern = new RegExp(`^${prefix}-(\\d+)Template\\.png$`);
+    try {
+      return fs
+        .readdirSync(this.trayAssetsDir)
+        .map((fileName) => {
+          const match = fileName.match(pattern);
+          return match ? { index: Number(match[1]), fileName } : null;
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.index - b.index)
+        .map(({ fileName }) => {
+          const image = nativeImage.createFromPath(path.join(this.trayAssetsDir, fileName));
+          image.setTemplateImage(true);
+          return image;
+        })
+        .filter((image) => !image.isEmpty());
+    } catch (error) {
+      console.error(`Failed to load tray "${prefix}" frames:`, error.message);
+      return [];
+    }
+  }
+
+  loadStateFrames(baseIcon) {
+    if (process.platform === "darwin") {
+      const recording = this.loadTemplateFrames("recording");
+      const processing = this.loadTemplateFrames("processing");
+      return {
+        idle: [baseIcon],
+        recording: recording.length > 0 ? recording : [baseIcon],
+        processing: processing.length > 0 ? processing : [baseIcon],
+      };
+    }
+    return this.buildStateIcons(baseIcon);
   }
 
   createFallbackIcon() {
@@ -237,16 +286,18 @@ class TrayManager {
     this.updateTrayMenu();
   }
 
+  // Windows fallback: derive tinted/dimmed variants from the colored base icon.
   buildStateIcons(baseIcon) {
+    const fallback = { idle: [baseIcon], recording: [baseIcon], processing: [baseIcon] };
     if (!baseIcon || baseIcon.isEmpty()) {
-      return { idle: baseIcon, recording: baseIcon, processing: baseIcon };
+      return fallback;
     }
 
     try {
       const size = baseIcon.getSize();
       const bitmap = baseIcon.toBitmap();
       if (!bitmap || bitmap.length < 4 || !size.width || !size.height) {
-        return { idle: baseIcon, recording: baseIcon, processing: baseIcon };
+        return fallback;
       }
 
       const expectedBytes = size.width * size.height * 4;
@@ -287,39 +338,66 @@ class TrayManager {
       });
       processing.setTemplateImage(true);
 
-      return { idle: baseIcon, recording, processing };
+      return { idle: [baseIcon], recording: [recording], processing: [processing] };
     } catch (error) {
       console.error("Failed to build tray state icons:", error.message);
-      return { idle: baseIcon, recording: baseIcon, processing: baseIcon };
+      return fallback;
     }
   }
 
-  getIconForState(state) {
-    if (this.stateIcons?.[state] && !this.stateIcons[state].isEmpty()) {
-      return this.stateIcons[state];
+  getFramesForState(state) {
+    const frames = (this.stateFrames?.[state] || []).filter((image) => image && !image.isEmpty());
+    return frames.length > 0 ? frames : [this.baseIcon];
+  }
+
+  setTrayImage(image) {
+    if (!this.tray || this.tray.isDestroyed()) return;
+    if (image && !image.isEmpty()) {
+      this.tray.setImage(image);
     }
-    return this.baseIcon;
+  }
+
+  stopAnimation() {
+    if (this.animationTimer) {
+      clearInterval(this.animationTimer);
+      this.animationTimer = null;
+    }
+  }
+
+  applyRecordingState(state) {
+    this.stopAnimation();
+
+    const frames = this.getFramesForState(state);
+    this.setTrayImage(frames[0]);
+
+    if (frames.length > 1) {
+      let index = 0;
+      this.animationTimer = setInterval(() => {
+        if (!this.tray || this.tray.isDestroyed()) {
+          this.stopAnimation();
+          return;
+        }
+        index = (index + 1) % frames.length;
+        this.setTrayImage(frames[index]);
+      }, STATE_FRAME_INTERVAL_MS[state] || 120);
+    }
+
+    this.tray.setToolTip(STATE_TOOLTIPS[state]);
+    this.appliedState = state;
   }
 
   setRecordingState(state = "idle") {
     const nextState = state === "recording" || state === "processing" ? state : "idle";
     this.recordingState = nextState;
 
-    if (!this.tray) {
+    if (!this.tray || this.tray.isDestroyed()) {
       return { success: true };
     }
 
-    const icon = this.getIconForState(nextState);
-    if (icon && !icon.isEmpty()) {
-      this.tray.setImage(icon);
+    // Idempotent: menu rebuilds re-apply the current state without restarting the animation.
+    if (this.appliedState !== nextState) {
+      this.applyRecordingState(nextState);
     }
-
-    const tooltips = {
-      recording: "Recording…",
-      processing: "Processing…",
-      idle: "OpenWhispr - Voice Dictation",
-    };
-    this.tray.setToolTip(tooltips[nextState]);
     return { success: true };
   }
 
@@ -479,7 +557,9 @@ class TrayManager {
 
     this.tray.on("destroyed", () => {
       console.log("Tray icon destroyed");
+      this.stopAnimation();
       this.tray = null;
+      this.appliedState = null;
     });
   }
 }

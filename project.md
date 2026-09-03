@@ -396,7 +396,7 @@ The system tray provides persistent access to the app when all windows are close
 **Availability:** macOS and Windows only (not created on Linux).
 
 **Icon:**
-- macOS: Template image (`iconTemplate@3x.png`) that adapts to light/dark menu bar.
+- macOS: Template images in `src/assets/tray/` (1x/2x/3x) that adapt to light/dark menu bar. `idle` is the outlined ring; `recording` is a filled disc with animated cut-out bars; `processing` is the ring with faint travelling bars. Regenerate with `npm run generate:tray-icons` (`scripts/generate-tray-icons.js`, no dependencies).
 - Windows: `icon.ico` or `icon.png` with fallback generation.
 
 **Menu items:**

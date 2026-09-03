@@ -28,6 +28,7 @@
     "download:whisper-cpp:all": "node scripts/download-whisper-cpp.js --all",
     "download:sherpa-onnx": "node scripts/download-sherpa-onnx.js --current",
     "download:sherpa-onnx:all": "node scripts/download-sherpa-onnx.js",
+    "generate:tray-icons": "node scripts/generate-tray-icons.js",
     "format:js": "eslint . --fix && cd src && eslint . --fix && prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "format": "npm run format:js",
     "format:check": "eslint . && cd src && eslint . && prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
