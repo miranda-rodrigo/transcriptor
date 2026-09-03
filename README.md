@@ -12,7 +12,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Features
 
-- 🎤 **Global Hotkey**: Customizable hotkey to start/stop dictation from anywhere (default: backtick `)
+- 🎤 **Global Hotkey**: Customizable hotkey to start/stop dictation from anywhere (macOS default: Globe / Fn)
 - 🤖 **Multi-Provider AI Processing**: Choose between OpenAI, Anthropic Claude, Google Gemini, or local models
 - 🎯 **Agent Naming**: Personalize your AI assistant with a custom name for natural interactions
 - 🧠 **Multi-Provider AI**:
@@ -28,7 +28,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🗄️ **Transcription History**: SQLite database stores all your transcriptions locally
 - 🔧 **Model Management**: Download and manage local Whisper models (tiny, base, small, medium, large, turbo)
 - 🧹 **Model Cleanup**: One-click removal of cached Whisper models with uninstall hooks to keep disks tidy
-- 🍎 **macOS**: Ships as a signed, notarized DMG (drag to Applications)
+- 🍎 **macOS**: Ships as an unsigned DMG (drag to Applications). Gatekeeper will warn on first open.
 - ⚡ **Automatic Pasting**: Transcribed text automatically pastes at your cursor location
 - 🖱️ **Draggable Interface**: Move the dictation panel anywhere on your screen
 - 🔄 **OpenAI Responses API**: Using the latest Responses API for improved performance
@@ -38,110 +38,75 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Prerequisites
 
 - **Node.js 18+** and npm (Download from [nodejs.org](https://nodejs.org/))
-- **macOS 10.15+** (Apple Silicon or Intel). The installable product is the notarized DMG.
-- On macOS, Globe key support requires the Xcode Command Line Tools (`xcode-select --install`) so the bundled Swift helper can run
+- **macOS 10.15+** (Apple Silicon or Intel). The installable product is the unsigned DMG from [Releases](https://github.com/miranda-rodrigo/transcriptor/releases).
 
 ## Quick Start
 
-### For Personal Use (Recommended)
+### Install from the DMG (recommended)
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/HeroTools/open-whispr.git
-   cd open-whispr
-   ```
+This fork ships an **unsigned** macOS DMG. There is no Apple Developer signature, so Gatekeeper will warn on first launch. That is expected.
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+1. Download **`OpenWhispr-<version>-arm64.dmg`** from [Releases](https://github.com/miranda-rodrigo/transcriptor/releases) (Apple Silicon: M1/M2/M3/M4). Intel Macs need the `x64` DMG if one is published.
+2. Open the DMG and drag **OpenWhispr** onto **Applications** (or `~/Applications` if you do not have admin).
+3. Eject the disk image. Do **not** run the app from the mounted DMG.
+4. First open: Finder → Applications → **right-click OpenWhispr → Open**. Confirm the dialog. After that, a normal double-click works.
+5. macOS will still ask for **Microphone** and **Accessibility** during onboarding. Approve both or dictation will record but will not paste.
 
-3. **Optional: Set up API keys** (only needed for cloud processing):
-   
-   **Method A - Environment file**:
-   ```bash
-   cp env.example .env
-   # Edit .env and add your API keys:
-   # OPENAI_API_KEY=your_openai_key
-   # ANTHROPIC_API_KEY=your_anthropic_key  
-   # GEMINI_API_KEY=your_gemini_key
-   ```
-   
-   **Method B - In-app configuration**:
-   - Run the app and configure API keys through the Control Panel
-   - Keys are automatically saved and persist across app restarts
+The `.zip` next to the DMG is only for in-app auto-update (`electron-updater`).
 
-4. **Run the application**:
-   ```bash
-   npm run dev  # Development mode with hot reload
-   # OR
-   npm start    # Production mode
-   ```
+### First-run onboarding
 
-5. **Optional: Local Whisper from source** (only needed if you want local processing):
-   ```bash
-   npm run download:whisper-cpp
-   ```
-   This downloads the whisper.cpp binary for your current platform into `resources/bin/`.
+On first launch the Control Panel is replaced by a 6-step wizard. You cannot skip it. Progress is saved, so quitting mid-setup resumes on the same step.
 
-### Building for Personal Use (Optional)
+| Step             | What you do                                                                                                                                                                                                         | You cannot continue until                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 1. Welcome       | Read what the app does.                                                                                                                                                                                             | —                                                                                     |
+| 2. Privacy       | Choose **Local** (whisper.cpp on device) or **Cloud** (OpenAI API).                                                                                                                                                 | You pick one. Default in the UI is Cloud.                                             |
+| 3. Setup         | **Local:** pick a Whisper model and wait for the download (Base is the usual choice). **Cloud:** paste an OpenAI API key. Optional custom base URLs if you use a compatible proxy. Language selector on both paths. | Local: a model is fully downloaded. Cloud: a non-empty API key.                       |
+| 4. Permissions   | Grant **Microphone** and **Accessibility**. Buttons open System Settings if needed.                                                                                                                                 | Both permissions show as granted. Accessibility is required to paste into other apps. |
+| 5. Hotkey & Test | Confirm or change the hotkey (macOS default is the **Globe / Fn** key; fallback is F8/F9 if registration fails). Choose **Hold to talk** or **Tap to toggle**. Practice in the textarea.                            | A hotkey is registered.                                                               |
+| 6. Agent name    | Name the AI helper used for “Hey \<name\>, …” commands (default `Agent`). Change later in Settings.                                                                                                                 | Name is not empty.                                                                    |
 
-If you want to build a standalone app for personal use:
+**What onboarding does not set up.** Parakeet (NVIDIA ASR) and Groq (or any other reasoning provider) are **not** in this wizard. After **Complete Setup**, open the Control Panel from the menu bar icon → Settings to switch the transcription engine and the cleanup LLM.
+
+The floating dictation pill stays hidden until you reach step 5 (Hotkey & Test). After setup it lives in the menu bar; the Dock icon stays hidden.
+
+### Run from source
 
 ```bash
-# Build without code signing (no certificates required)
+git clone https://github.com/miranda-rodrigo/transcriptor.git
+cd transcriptor
+npm install
+npm run dev
+```
+
+Cloud API keys can go in `.env` (`cp env.example .env`) or in the Control Panel. Local whisper.cpp binaries: `npm run download:whisper-cpp`.
+
+### Build a local copy
+
+```bash
+# Unsigned .app (no certificates)
 npm run pack
+# Output: dist/mac-arm64/OpenWhispr.app
 
-# The unsigned app will be in: dist/mac-arm64/OpenWhispr.app
+# Unsigned DMG + zip
+CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:mac -- --arm64 --publish never
 ```
 
-**Note**: Unsigned local builds show a Gatekeeper warning. Right-click and select "Open". The product users install is the signed, notarized DMG from `npm run build:mac`.
-
-#### Install from the DMG
-
-1. Open `OpenWhispr-<version>-<arch>.dmg`
-2. Drag **OpenWhispr** onto **Applications** (or `~/Applications` without admin)
-3. Eject the disk image
-4. Launch from Applications — do not run the app from the mounted DMG
-
-The zip next to the DMG is only for in-app auto-update (`electron-updater`).
-
-### Building for Distribution
-
-For maintainers who need to distribute signed builds:
-
-```bash
-# Requires Apple Developer signing + notarization
-npm run build:mac
-```
-
-### First Time Setup
-
-1. **Choose Processing Method**:
-   - **Local Processing**: Download Whisper models for completely private transcription
-   - **Cloud Processing**: Use OpenAI's API for faster transcription (requires API key)
-
-2. **Grant Permissions**:
-   - **Microphone Access**: Required for voice recording
-   - **Accessibility Permissions**: Required for automatic text pasting (macOS)
-
-3. **Name Your Agent**: Give your AI assistant a personal name (e.g., "Assistant", "Jarvis", "Alex")
-   - Makes interactions feel more natural and conversational
-   - Helps distinguish between giving commands and regular dictation
-   - Can be changed anytime in settings
-
-4. **Configure Global Hotkey**: Default is backtick (`) but can be customized
+Signed/notarized builds (`npm run build:mac` with Apple secrets) are optional and not what this fork currently publishes.
 
 ## Usage
 
 ### Basic Dictation
+
 1. **Start the app** - A small draggable panel appears on your screen
-2. **Press your hotkey** (default: backtick `) - Start dictating (panel shows recording animation)
+2. **Press your hotkey** (macOS default: Globe / Fn) - Start dictating (panel shows recording animation)
 3. **Press your hotkey again** - Stop dictation and begin transcription (panel shows processing animation)
 4. **Text appears** - Transcribed text is automatically pasted at your cursor location
 5. **Drag the panel** - Click and drag to move the dictation panel anywhere on your screen
 
 ### Control Panel
+
 - **Access**: Right-click the tray icon (macOS) or through the system menu
 - **Configure**: Choose between local and cloud processing
 - **History**: View, copy, and delete past transcriptions
@@ -150,21 +115,25 @@ npm run build:mac
 - **Settings**: Configure API keys, customize hotkeys, and manage permissions
 
 ### Uninstall & Cache Cleanup
-- **In-App**: Use *Settings → General → Local Model Storage → Remove Downloaded Models* to clear `~/.cache/openwhispr/whisper-models` (or `%USERPROFILE%\.cache\openwhispr\whisper-models` on Windows).
+
+- **In-App**: Use _Settings → General → Local Model Storage → Remove Downloaded Models_ to clear `~/.cache/openwhispr/whisper-models` (or `%USERPROFILE%\.cache\openwhispr\whisper-models` on Windows).
 - **Windows Uninstall**: The NSIS uninstaller automatically deletes the same cache directory.
 - **Linux Packages**: `deb`/`rpm` post-uninstall scripts also remove cached models.
 - **macOS**: If you uninstall manually, remove `~/Library/Caches` or `~/.cache/openwhispr/whisper-models` if desired.
 
 ### Agent Naming & AI Processing
+
 Once you've named your agent during setup, you can interact with it using multiple AI providers:
 
 **🎯 Agent Commands** (for AI assistance):
+
 - "Hey [AgentName], make this more professional"
 - "Hey [AgentName], format this as a list"
 - "Hey [AgentName], write a thank you email"
 - "Hey [AgentName], convert this to bullet points"
 
 **🤖 AI Provider Options**:
+
 - **OpenAI**: GPT-5, GPT-4.1, o-series reasoning models
 - **Anthropic**: Claude Opus 4.5, Sonnet 4.5, Haiku 4.5
 - **Google**: Gemini 2.5 Pro/Flash/Flash-Lite
@@ -172,6 +141,7 @@ Once you've named your agent during setup, you can interact with it using multip
 - **Local**: Qwen, LLaMA, Mistral via llama.cpp
 
 **📝 Regular Dictation** (for normal text):
+
 - "This is just normal text I want transcribed"
 - "Meeting notes: John mentioned the quarterly report"
 - "Dear Sarah, thank you for your help"
@@ -179,7 +149,8 @@ Once you've named your agent during setup, you can interact with it using multip
 The AI automatically detects when you're giving it commands versus dictating regular text, and removes agent name references from the final output.
 
 ### Processing Options
-- **Local Processing**: 
+
+- **Local Processing**:
   - Install Whisper automatically through the Control Panel
   - Download models: tiny (fastest), base (recommended), small, medium, large (best quality)
   - Complete privacy - audio never leaves your device
@@ -255,6 +226,7 @@ open-whispr/
 ### Architecture
 
 The app consists of two main windows:
+
 1. **Main Window**: Minimal overlay for dictation controls
 2. **Control Panel**: Full settings and history interface
 
@@ -272,6 +244,7 @@ Both use the same React codebase but render different components based on URL pa
 ### Tailwind CSS v4 Setup
 
 This project uses the latest Tailwind CSS v4 with:
+
 - CSS-first configuration using `@theme` directive
 - Vite plugin for optimal performance
 - Custom design tokens for consistent theming
@@ -310,7 +283,7 @@ LANGUAGE=
 # Optional: Anthropic API Configuration
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
-# Optional: Google Gemini API Configuration  
+# Optional: Google Gemini API Configuration
 GEMINI_API_KEY=your_gemini_api_key_here
 
 # Optional: Debug mode
@@ -326,12 +299,14 @@ For local processing, OpenWhispr uses OpenAI's Whisper model via whisper.cpp - a
 3. **No Dependencies**: No Python or other runtime required
 
 **System Fallback**: If the bundled binary fails, install via package manager:
+
 - macOS: `brew install whisper-cpp`
 - Linux: Build from source at https://github.com/ggml-org/whisper.cpp
 
 **From Source**: When running locally (not a packaged build), download the binary with `npm run download:whisper-cpp` so `resources/bin/` has your platform executable.
 
 **Requirements**:
+
 - Sufficient disk space for models (75MB - 3GB depending on model)
 
 **Upgrading from Python-based version**: If you previously used the Python-based Whisper, you'll need to re-download models in GGML format. You can safely delete the old Python environment (`~/.openwhispr/python/`) and PyTorch models (`~/.cache/whisper/`) to reclaim disk space.
@@ -362,6 +337,7 @@ We welcome contributions! Please follow these steps:
 - Follow the existing code style
 - Update documentation as needed
 - Test on your target platform before submitting
+
 ## Security
 
 OpenWhispr is designed with privacy and security in mind:
